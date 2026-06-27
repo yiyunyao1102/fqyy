@@ -50,4 +50,28 @@ describe("profile persistence", () => {
     expect(loadActiveRun(storage)?.seed).toBe(123);
     expect(storage.getItem(profileStorageKey)).toContain('"version":1');
   });
+
+  it("rejects malformed profile records instead of returning partial data", () => {
+    const storage = createMemoryStorage();
+
+    storage.setItem(profileStorageKey, JSON.stringify({ version: 1 }));
+    expect(loadProfileRecord(storage)).toBeNull();
+
+    storage.setItem(
+      profileStorageKey,
+      JSON.stringify({
+        version: 1,
+        settings: { soundEnabled: "yes", musicVolume: 2 },
+        completedRuns: -1
+      })
+    );
+    expect(loadProfileRecord(storage)).toBeNull();
+
+    storage.setItem(profileStorageKey, "{bad json");
+    expect(loadProfileRecord(storage)).toBeNull();
+  });
+
+  it("returns null when no profile has been saved", () => {
+    expect(loadProfileRecord(createMemoryStorage())).toBeNull();
+  });
 });

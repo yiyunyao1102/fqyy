@@ -1,11 +1,15 @@
 import type { GongfaId } from "../data/gongfa";
 import type { LinggenId } from "../data/linggen";
-import type { StageId } from "../data/stages";
+import type { RealmPhaseId, StageId } from "../data/stages";
+import {
+  decodeActiveRunCheckpoint,
+  decodeActiveRunSave,
+  encodeActiveRunSave
+} from "./runCheckpointCodec";
 
 export const activeRunStorageKey = "fqyy.active-run.v1";
 
 export type RunLifecycle = "mortal";
-export type RealmPhaseId = "chuqi" | "zhongqi" | "houqi" | "dayuanman";
 
 export interface HealingPillCheckpoint {
   x: number;
@@ -68,6 +72,7 @@ export interface ActiveRunCheckpoint {
   guardBuildRate: number;
   guardDecayRate: number;
   guardMitigation: number;
+  guardMitigationBonus?: number;
   guardAppliedRetaliationBonus: number;
   guardAppliedAuraBonus: number;
   guardAppliedDamageBonus: number;
@@ -85,6 +90,8 @@ export interface ActiveRunCheckpoint {
   mainGongfaId?: GongfaId;
   kills: number;
   elapsedMs: number;
+  finalBossActive: boolean;
+  finalBossPhaseIndex: number;
 }
 
 export interface ActiveRunSave {
@@ -92,20 +99,34 @@ export interface ActiveRunSave {
   seed: number;
   startedAt: number;
   lifecycle: RunLifecycle;
+  selectedLinggenId?: LinggenId;
   checkpoint?: ActiveRunCheckpoint;
 }
 
-export function createActiveRunSave(seed: number, startedAt: number = Date.now()): ActiveRunSave {
+export function createActiveRunSave(
+  seed: number,
+  startedAt: number = Date.now(),
+  selectedLinggenId?: LinggenId
+): ActiveRunSave {
   return {
     version: 1,
     seed,
     startedAt,
-    lifecycle: "mortal"
+    lifecycle: "mortal",
+    ...(selectedLinggenId ? { selectedLinggenId } : {})
   };
 }
 
+export function createActiveRunCheckpoint(checkpoint: unknown): ActiveRunCheckpoint {
+  const decoded = decodeActiveRunCheckpoint(checkpoint);
+  if (!decoded) {
+    throw new Error("Invalid active Run checkpoint.");
+  }
+  return decoded;
+}
+
 export function saveActiveRun(storage: Storage, save: ActiveRunSave): void {
-  storage.setItem(activeRunStorageKey, JSON.stringify(save));
+  storage.setItem(activeRunStorageKey, encodeActiveRunSave(save));
 }
 
 export function loadActiveRun(storage: Storage): ActiveRunSave | null {
@@ -115,23 +136,7 @@ export function loadActiveRun(storage: Storage): ActiveRunSave | null {
   }
 
   try {
-    const parsed = JSON.parse(raw) as Partial<ActiveRunSave>;
-    if (
-      parsed.version !== 1 ||
-      typeof parsed.seed !== "number" ||
-      typeof parsed.startedAt !== "number" ||
-      parsed.lifecycle !== "mortal"
-    ) {
-      return null;
-    }
-
-    return {
-      version: 1,
-      seed: parsed.seed,
-      startedAt: parsed.startedAt,
-      lifecycle: "mortal",
-      checkpoint: parsed.checkpoint as ActiveRunCheckpoint | undefined
-    };
+    return decodeActiveRunSave(JSON.parse(raw));
   } catch {
     return null;
   }

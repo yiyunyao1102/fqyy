@@ -33,12 +33,28 @@ export function loadProfileRecord(storage: Storage): ProfileRecord | null {
   }
 
   try {
-    const parsed = JSON.parse(raw) as ProfileRecord;
-    if (parsed.version !== 1) {
+    const parsed = JSON.parse(raw) as Partial<ProfileRecord>;
+    if (
+      parsed.version !== 1 ||
+      !parsed.settings ||
+      typeof parsed.settings.soundEnabled !== "boolean" ||
+      typeof parsed.settings.musicVolume !== "number" ||
+      parsed.settings.musicVolume < 0 ||
+      parsed.settings.musicVolume > 1 ||
+      typeof parsed.completedRuns !== "number" ||
+      parsed.completedRuns < 0
+    ) {
       return null;
     }
 
-    return parsed;
+    return {
+      version: 1,
+      settings: {
+        soundEnabled: parsed.settings.soundEnabled,
+        musicVolume: parsed.settings.musicVolume
+      },
+      completedRuns: parsed.completedRuns
+    };
   } catch {
     return null;
   }
