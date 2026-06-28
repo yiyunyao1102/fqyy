@@ -47,6 +47,33 @@ export const masteryTransformationConfigs: MasteryChoiceDefinition[] = [
     requiredGongfaIds: ["yujian-jue"],
     milestoneRank: 3,
     exclusivityGroup: "yujian-jue:rank-3"
+  },
+  {
+    id: "heaven-splitting-line",
+    name: "Heaven-Splitting Line",
+    lore: "Compress Cutting Front into a single long penetrating lane.",
+    kind: "transformation",
+    requiredGongfaIds: ["jinfeng-gong"],
+    milestoneRank: 3,
+    exclusivityGroup: "jinfeng-gong:rank-3"
+  },
+  {
+    id: "golden-gale-fan",
+    name: "Golden Gale Fan",
+    lore: "Spread Cutting Front across a broad frontal arc of blades.",
+    kind: "transformation",
+    requiredGongfaIds: ["jinfeng-gong"],
+    milestoneRank: 3,
+    exclusivityGroup: "jinfeng-gong:rank-3"
+  },
+  {
+    id: "crescent-wake",
+    name: "Crescent Wake",
+    lore: "Trail cutting crescents along the Cultivator's movement route at speed.",
+    kind: "transformation",
+    requiredGongfaIds: ["jinfeng-gong"],
+    milestoneRank: 3,
+    exclusivityGroup: "jinfeng-gong:rank-3"
   }
 ];
 

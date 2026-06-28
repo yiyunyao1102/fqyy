@@ -65,6 +65,31 @@ describe("mastery progression", () => {
     });
   });
 
+  it("offers exactly the Jinfeng rank-3 Transformation milestone choices", () => {
+    expect(getDeterministicMasteryChoiceIds({
+      gongfaId: "jinfeng-gong",
+      rank: 3,
+      seed: "seed-123",
+      learnedIds: []
+    })).toEqual(["heaven-splitting-line", "golden-gale-fan", "crescent-wake"]);
+
+    expect(getMasteryChoiceDefinition("crescent-wake")).toMatchObject({
+      name: "Crescent Wake",
+      kind: "transformation",
+      milestoneRank: 3,
+      exclusivityGroup: "jinfeng-gong:rank-3"
+    });
+  });
+
+  it("excludes sibling Transformations once one rank-3 Jinfeng Transformation is learned", () => {
+    expect(getDeterministicMasteryChoiceIds({
+      gongfaId: "jinfeng-gong",
+      rank: 3,
+      seed: "seed-123",
+      learnedIds: ["golden-gale-fan"]
+    })).toEqual([]);
+  });
+
   it("resolves mastery choice definitions across refinements, transformations, Skill 2, and unknown ids", () => {
     expect(getMasteryChoiceDefinition("sword-intent-sharpening")).toMatchObject({
       id: "sword-intent-sharpening",
@@ -96,15 +121,15 @@ describe("mastery progression", () => {
     })).toEqual([]);
   });
 
-  it("keeps non-Yujian rank 3 on ordinary refinement choices until authored Transformations exist", () => {
+  it("keeps gongfa without authored Transformations on ordinary rank 3 refinement choices", () => {
     expect(getDeterministicMasteryChoiceIds({
-      gongfaId: "jinfeng-gong",
+      gongfaId: "gengjin-huti",
       rank: 3,
       seed: "seed-123",
       learnedIds: []
     })).toHaveLength(3);
     expect(getDeterministicMasteryChoiceIds({
-      gongfaId: "jinfeng-gong",
+      gongfaId: "gengjin-huti",
       rank: 3,
       seed: "seed-123",
       learnedIds: []

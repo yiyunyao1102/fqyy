@@ -1336,8 +1336,9 @@ export function planGongfaAttack(
 
       return commands;
     }
-    case "wave":
-      return [
+    case "wave": {
+      const learnedMasteryIds = options.learnedMasteryIds ?? [];
+      const commands: GongfaRuntimeCommand[] = [
         {
           kind: "wave-volley",
           count: Math.max(1, runtime.combat.count),
@@ -1345,6 +1346,23 @@ export function planGongfaAttack(
           aimMode: runtime.jinfeng ? "last" : "nearest"
         }
       ];
+
+      // Crescent Wake trails an extra cutting crescent while moving at speed.
+      if (
+        runtime.jinfeng &&
+        learnedMasteryIds.includes("crescent-wake") &&
+        runtime.jinfeng.momentum >= 2
+      ) {
+        commands.push({
+          kind: "wave-volley",
+          count: 1,
+          returnShots: 0,
+          aimMode: "last"
+        });
+      }
+
+      return commands;
+    }
     case "aura":
       if (!runtime.burningRing) {
         return [
@@ -1451,10 +1469,46 @@ export function splitGongfaImprovementReplayIds(upgradeIds: string[]): GongfaImp
   );
 }
 
+function applyStructuralTransformation(
+  runtime: GongfaRuntime,
+  transformationId: string
+): GongfaRuntime | undefined {
+  if (!runtime.jinfeng) {
+    return undefined;
+  }
+
+  if (transformationId === "heaven-splitting-line") {
+    // Compress the Cutting Front into one long penetrating lane.
+    const next = copyRuntime(runtime);
+    next.combat.count = 1;
+    next.combat.pierce += 2;
+    next.combat.range += 90;
+    next.combat.spreadDeg = Math.max(2, Math.floor(next.combat.spreadDeg / 2));
+    return next;
+  }
+
+  if (transformationId === "golden-gale-fan") {
+    // Spread the Cutting Front into a broad frontal arc.
+    const next = copyRuntime(runtime);
+    next.combat.count += 2;
+    next.combat.spreadDeg += 40;
+    return next;
+  }
+
+  return undefined;
+}
+
 export function applyGongfaImprovement(
   runtime: GongfaRuntime,
   upgradeId: string
 ): GongfaImprovementResult {
+  // Milestone Transformations are not authored in upgradeConfigs. Structural
+  // ones (those that restructure Skill 1 on selection) are applied here.
+  const structural = applyStructuralTransformation(runtime, upgradeId);
+  if (structural) {
+    return { runtime: structural };
+  }
+
   const upgrade = upgradeConfigs.find((item) => item.id === upgradeId);
   if (!upgrade) {
     return { runtime };

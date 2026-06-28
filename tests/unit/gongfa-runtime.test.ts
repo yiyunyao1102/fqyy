@@ -769,4 +769,50 @@ describe("Gongfa runtime", () => {
       }
     ]);
   });
+
+  it("Heaven-Splitting Line compresses Jinfeng Cutting Front into a piercing lane", () => {
+    const runtime = createGongfaRuntime({ gongfaId: "jinfeng-gong" });
+    const { combat } = applyGongfaImprovement(runtime, "heaven-splitting-line").runtime;
+
+    expect(combat.count).toBe(1);
+    expect(combat.pierce).toBe(runtime.combat.pierce + 2);
+    expect(combat.range).toBe(runtime.combat.range + 90);
+    expect(combat.spreadDeg).toBeLessThan(runtime.combat.spreadDeg);
+  });
+
+  it("Golden Gale Fan widens Jinfeng Cutting Front into a frontal arc", () => {
+    const runtime = createGongfaRuntime({ gongfaId: "jinfeng-gong" });
+    const { combat } = applyGongfaImprovement(runtime, "golden-gale-fan").runtime;
+
+    expect(combat.count).toBe(runtime.combat.count + 2);
+    expect(combat.spreadDeg).toBe(runtime.combat.spreadDeg + 40);
+  });
+
+  it("Crescent Wake trails an extra wave only while moving with built Momentum", () => {
+    const base = createGongfaRuntime({ gongfaId: "jinfeng-gong" });
+
+    // No Momentum yet: only the standard Cutting Front fires.
+    expect(
+      planGongfaAttack(base, 0, { learnedMasteryIds: ["crescent-wake"] })
+    ).toHaveLength(1);
+
+    // Build Momentum by moving, then the crescent trails behind.
+    const moved = advanceGongfaRuntime(base, {
+      kind: "tick",
+      deltaMs: 4000,
+      nearbyEnemyCount: 0,
+      isMoving: true,
+      skill2Id: undefined
+    }).runtime;
+    expect(moved.jinfeng!.momentum).toBeGreaterThanOrEqual(2);
+
+    const commands = planGongfaAttack(moved, 0, {
+      learnedMasteryIds: ["crescent-wake"]
+    });
+    expect(commands).toHaveLength(2);
+    expect(commands.every((command) => command.kind === "wave-volley")).toBe(true);
+
+    // Without the Transformation learned, no crescent even at Momentum.
+    expect(planGongfaAttack(moved, 0)).toHaveLength(1);
+  });
 });
