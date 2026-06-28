@@ -199,6 +199,8 @@ export type GongfaRuntimeCommand =
       segmentCount: number;
       visibleSegments: number;
       ringRadius: number;
+      damageScale?: number;
+      scatterEmbers?: boolean;
     }
   | {
       kind: "solar-flare-cycle";
@@ -1585,17 +1587,25 @@ export function planGongfaAttack(
     return [];
   }
 
-  const segmentCount = Math.max(
+  const learnedMasteryIds = options.learnedMasteryIds ?? [];
+  const baseSegmentCount = Math.max(
     6,
     state.ringSegments + state.counterflowRingAppliedSegments
   );
+  // Condensed Furnace Ring: merge into fewer, fiercer priority-burning hotspots.
+  const condensed = learnedMasteryIds.includes("condensed-furnace-ring");
+  const segmentCount = condensed
+    ? Math.max(3, Math.floor(baseSegmentCount / 2))
+    : baseSegmentCount;
   return [
     {
       kind: "burning-ring-volley",
       rotation: (Math.max(0, elapsedMs) / 1000) * 0.9,
       segmentCount,
-      visibleSegments: Math.max(4, segmentCount - 2),
-      ringRadius: 24 + Math.floor(state.heat * 0.3)
+      visibleSegments: Math.min(segmentCount, Math.max(4, segmentCount - 2)),
+      ringRadius: 24 + Math.floor(state.heat * 0.3),
+      ...(condensed ? { damageScale: 1.8 } : {}),
+      ...(learnedMasteryIds.includes("scattered-ember-orbit") ? { scatterEmbers: true } : {})
     }
   ];
 }

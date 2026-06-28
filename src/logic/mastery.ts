@@ -209,8 +209,40 @@ export const masteryTransformationConfigs: MasteryChoiceDefinition[] = [
     requiredGongfaIds: ["gengjin-huti"],
     milestoneRank: 9,
     exclusivityGroup: "gengjin-huti:rank-9"
+  },
+  {
+    // Counterflow Ring keeps its existing effect in upgradeConfigs (durable,
+    // checkpointed runtime state); registering it here promotes it from an
+    // ordinary refinement to its proper rank-3 Transformation milestone.
+    id: "counterflow-ring",
+    name: "Counterflow Ring",
+    lore: "Add a second counter-rotating ring with intersection hot zones.",
+    kind: "transformation",
+    requiredGongfaIds: ["burning-ring-scripture"],
+    milestoneRank: 3,
+    exclusivityGroup: "burning-ring-scripture:rank-3"
+  },
+  {
+    id: "condensed-furnace-ring",
+    name: "Condensed Furnace Ring",
+    lore: "Merge segments into fewer, fiercer priority-burning hotspots.",
+    kind: "transformation",
+    requiredGongfaIds: ["burning-ring-scripture"],
+    milestoneRank: 3,
+    exclusivityGroup: "burning-ring-scripture:rank-3"
+  },
+  {
+    id: "scattered-ember-orbit",
+    name: "Scattered Ember Orbit",
+    lore: "Segment hits leave short-lived burning patches in the ring's wake.",
+    kind: "transformation",
+    requiredGongfaIds: ["burning-ring-scripture"],
+    milestoneRank: 3,
+    exclusivityGroup: "burning-ring-scripture:rank-3"
   }
 ];
+
+const transformationIdSet = new Set(masteryTransformationConfigs.map((item) => item.id));
 
 const rank10Skill2Ids: Record<GongfaId, string> = {
   "yujian-jue": "returning-sword-formation",
@@ -325,6 +357,9 @@ export function getDeterministicMasteryChoiceIds(
 
   const authoredPool = upgradeConfigs
     .filter((upgrade) => upgrade.requiredGongfaIds?.includes(context.gongfaId))
+    // An upgrade that is also a milestone Transformation (e.g. counterflow-ring)
+    // is offered only at its milestone, never in the ordinary refinement pool.
+    .filter((upgrade) => !transformationIdSet.has(upgrade.id))
     .filter((upgrade) => {
       const limit = upgrade.maxSelections ?? Infinity;
       return (learnedCounts[upgrade.id] ?? 0) < limit;

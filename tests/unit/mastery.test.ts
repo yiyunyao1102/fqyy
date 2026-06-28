@@ -268,17 +268,53 @@ describe("mastery progression", () => {
 
   it("keeps gongfa without authored Transformations on ordinary rank 3 refinement choices", () => {
     expect(getDeterministicMasteryChoiceIds({
-      gongfaId: "burning-ring-scripture",
+      gongfaId: "crimson-furnace-sword-art",
       rank: 3,
       seed: "seed-123",
       learnedIds: []
     })).toHaveLength(3);
     expect(getDeterministicMasteryChoiceIds({
-      gongfaId: "burning-ring-scripture",
+      gongfaId: "crimson-furnace-sword-art",
       rank: 3,
       seed: "seed-123",
       learnedIds: []
     })).not.toContain("sword-bloom");
+  });
+
+  it("offers exactly the Burning Ring rank-3 Transformation milestone choices and drops counterflow-ring from ordinary refinements", () => {
+    expect(getDeterministicMasteryChoiceIds({
+      gongfaId: "burning-ring-scripture",
+      rank: 3,
+      seed: "seed-123",
+      learnedIds: []
+    })).toEqual([
+      "counterflow-ring",
+      "condensed-furnace-ring",
+      "scattered-ember-orbit"
+    ]);
+
+    expect(getMasteryChoiceDefinition("counterflow-ring")).toMatchObject({
+      kind: "transformation",
+      milestoneRank: 3,
+      exclusivityGroup: "burning-ring-scripture:rank-3"
+    });
+
+    // counterflow-ring is no longer offered as an ordinary (rank 1) refinement.
+    expect(getDeterministicMasteryChoiceIds({
+      gongfaId: "burning-ring-scripture",
+      rank: 1,
+      seed: "seed-123",
+      learnedIds: []
+    })).not.toContain("counterflow-ring");
+  });
+
+  it("excludes sibling Transformations once one rank-3 Burning Ring Transformation is learned", () => {
+    expect(getDeterministicMasteryChoiceIds({
+      gongfaId: "burning-ring-scripture",
+      rank: 3,
+      seed: "seed-123",
+      learnedIds: ["condensed-furnace-ring"]
+    })).toEqual([]);
   });
 
   it("adds the rank-10 Skill 2 family into the post-rank-10 pool", () => {

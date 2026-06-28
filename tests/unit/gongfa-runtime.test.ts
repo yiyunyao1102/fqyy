@@ -1156,4 +1156,28 @@ describe("Gongfa runtime", () => {
     });
     expect(moving.commands.some((command) => command.kind === "aura-burst")).toBe(true);
   });
+
+  it("Condensed Furnace Ring trades segments for fiercer hotspots", () => {
+    const ring = createGongfaRuntime({ gongfaId: "burning-ring-scripture" });
+    const [base] = planGongfaAttack(ring, 0);
+    const [condensed] = planGongfaAttack(ring, 0, {
+      learnedMasteryIds: ["condensed-furnace-ring"]
+    });
+    if (base.kind !== "burning-ring-volley" || condensed.kind !== "burning-ring-volley") {
+      throw new Error("expected burning-ring-volley");
+    }
+    expect(condensed.segmentCount).toBeLessThan(base.segmentCount);
+    expect(condensed.damageScale).toBeGreaterThan(1);
+    expect(base.damageScale).toBeUndefined();
+  });
+
+  it("Scattered Ember Orbit flags the volley to leave burning patches", () => {
+    const ring = createGongfaRuntime({ gongfaId: "burning-ring-scripture" });
+    const [scattered] = planGongfaAttack(ring, 0, {
+      learnedMasteryIds: ["scattered-ember-orbit"]
+    });
+    const [plain] = planGongfaAttack(ring, 0);
+    expect(scattered.kind === "burning-ring-volley" && scattered.scatterEmbers).toBe(true);
+    expect(plain.kind === "burning-ring-volley" && plain.scatterEmbers).toBeUndefined();
+  });
 });

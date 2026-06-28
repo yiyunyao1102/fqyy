@@ -1563,7 +1563,10 @@ export class GameScene extends Phaser.Scene {
           this.player.y + Math.sin(angle) * radius,
           this.combatState.projectileTexture
         );
-        projectile.damage = Math.max(1, Math.floor(this.combatState.damage * (ring === 0 ? 1 : 0.9)));
+        projectile.damage = Math.max(
+          1,
+          Math.floor(this.combatState.damage * (ring === 0 ? 1 : 0.9) * (command.damageScale ?? 1))
+        );
         projectile.pierceRemaining = this.combatState.pierce;
         projectile.setTint(this.combatState.tint);
         projectile.setScale(ring === 0 ? 1 : 0.84);
@@ -1578,8 +1581,33 @@ export class GameScene extends Phaser.Scene {
             projectile.destroy();
           }
         });
+
+        // Scattered Ember Orbit: leave a short-lived burning patch in the wake.
+        if (command.scatterEmbers && ring === 0) {
+          this.spawnEmberPatch(
+            this.player.x + Math.cos(angle) * radius,
+            this.player.y + Math.sin(angle) * radius
+          );
+        }
       }
     }
+  }
+
+  private spawnEmberPatch(x: number, y: number): void {
+    const ember = new Projectile(this, x, y, this.combatState.projectileTexture);
+    ember.sourceGongfaId = this.gongfaRuntime?.gongfaId;
+    ember.damage = Math.max(1, Math.floor(this.combatState.damage * 0.4));
+    ember.pierceRemaining = 999;
+    ember.setTint(this.combatState.tint);
+    ember.setScale(0.7);
+    this.projectiles.add(ember);
+    const body = ember.body as Phaser.Physics.Arcade.Body;
+    body.setVelocity(0, 0);
+    this.time.delayedCall(700, () => {
+      if (ember.active) {
+        ember.destroy();
+      }
+    });
   }
 
   private getNearestEnemies(count: number): Enemy[] {
