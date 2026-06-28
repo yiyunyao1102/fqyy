@@ -155,6 +155,33 @@ export const masteryTransformationConfigs: MasteryChoiceDefinition[] = [
     requiredGongfaIds: ["gengjin-huti"],
     milestoneRank: 3,
     exclusivityGroup: "gengjin-huti:rank-3"
+  },
+  {
+    id: "immovable-mountain",
+    name: "Immovable Mountain",
+    lore: "Standing still greatly increases Guard gain and defensive output.",
+    kind: "transformation",
+    requiredGongfaIds: ["gengjin-huti"],
+    milestoneRank: 6,
+    exclusivityGroup: "gengjin-huti:rank-6"
+  },
+  {
+    id: "flowing-iron-body",
+    name: "Flowing Iron Body",
+    lore: "Each Evade grants Guard and releases a defensive shockwave.",
+    kind: "transformation",
+    requiredGongfaIds: ["gengjin-huti"],
+    milestoneRank: 6,
+    exclusivityGroup: "gengjin-huti:rank-6"
+  },
+  {
+    id: "ten-thousand-armor-resonance",
+    name: "Ten-Thousand Armor Resonance",
+    lore: "Any defensive-tagged Skill hit builds Guard.",
+    kind: "transformation",
+    requiredGongfaIds: ["gengjin-huti"],
+    milestoneRank: 6,
+    exclusivityGroup: "gengjin-huti:rank-6"
   }
 ];
 

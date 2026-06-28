@@ -1017,4 +1017,73 @@ describe("Gongfa runtime", () => {
       ironWakeWall(createGongfaRuntime({ gongfaId: "gengjin-huti" }), ["iron-wake"])
     ).toBeUndefined();
   });
+
+  it("Immovable Mountain builds Guard faster while standing still", () => {
+    const base = createGongfaRuntime({ gongfaId: "gengjin-huti" });
+    const still = advanceGongfaRuntime(base, {
+      kind: "tick",
+      deltaMs: 2000,
+      nearbyEnemyCount: 5,
+      isMoving: false,
+      learnedMasteryIds: ["immovable-mountain"]
+    }).runtime;
+    const ordinary = advanceGongfaRuntime(base, {
+      kind: "tick",
+      deltaMs: 2000,
+      nearbyEnemyCount: 5,
+      isMoving: false
+    }).runtime;
+    expect(still.gengjin!.guardValue).toBeGreaterThan(ordinary.gengjin!.guardValue);
+  });
+
+  it("Flowing Iron Body grants Guard and a shockwave on Evade", () => {
+    const guarded = advanceGongfaRuntime(createGongfaRuntime({ gongfaId: "gengjin-huti" }), {
+      kind: "tick",
+      deltaMs: 2000,
+      nearbyEnemyCount: 5,
+      isMoving: false
+    }).runtime;
+    const before = guarded.gengjin!.guardValue;
+
+    const evaded = advanceGongfaRuntime(guarded, {
+      kind: "evade",
+      learnedMasteryIds: ["flowing-iron-body"]
+    });
+    expect(evaded.runtime.gengjin!.guardValue).toBeGreaterThan(before);
+    expect(evaded.commands.some((command) => command.kind === "aura-burst")).toBe(true);
+
+    const inert = advanceGongfaRuntime(guarded, { kind: "evade", learnedMasteryIds: [] });
+    expect(inert.runtime.gengjin!.guardValue).toBe(before);
+    expect(inert.commands).toHaveLength(0);
+  });
+
+  it("Ten-Thousand Armor Resonance builds Guard on defensive hits", () => {
+    const guarded = advanceGongfaRuntime(createGongfaRuntime({ gongfaId: "gengjin-huti" }), {
+      kind: "tick",
+      deltaMs: 2000,
+      nearbyEnemyCount: 5,
+      isMoving: false
+    }).runtime;
+    const before = guarded.gengjin!.guardValue;
+    const hitFacts = {
+      sourceGongfaId: "gengjin-huti" as const,
+      targetId: 1,
+      damage: 8,
+      baseDamageKilledTarget: false,
+      embedStacks: 0,
+      embedPower: 0
+    };
+
+    const resonant = advanceGongfaRuntimeForProjectileHit(guarded, {
+      ...hitFacts,
+      learnedMasteryIds: ["ten-thousand-armor-resonance"]
+    }).runtime;
+    expect(resonant.gengjin!.guardValue).toBeGreaterThan(before);
+
+    const inert = advanceGongfaRuntimeForProjectileHit(guarded, {
+      ...hitFacts,
+      learnedMasteryIds: []
+    }).runtime;
+    expect(inert.gengjin!.guardValue).toBe(before);
+  });
 });

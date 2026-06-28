@@ -177,6 +177,35 @@ describe("mastery progression", () => {
     })).toEqual([]);
   });
 
+  it("offers exactly the Gengjin rank-6 Transformation milestone choices", () => {
+    expect(getDeterministicMasteryChoiceIds({
+      gongfaId: "gengjin-huti",
+      rank: 6,
+      seed: "seed-123",
+      learnedIds: ["hundred-blade-halo"]
+    })).toEqual([
+      "immovable-mountain",
+      "flowing-iron-body",
+      "ten-thousand-armor-resonance"
+    ]);
+
+    expect(getMasteryChoiceDefinition("flowing-iron-body")).toMatchObject({
+      name: "Flowing Iron Body",
+      kind: "transformation",
+      milestoneRank: 6,
+      exclusivityGroup: "gengjin-huti:rank-6"
+    });
+  });
+
+  it("excludes sibling Transformations once one rank-6 Gengjin Transformation is learned", () => {
+    expect(getDeterministicMasteryChoiceIds({
+      gongfaId: "gengjin-huti",
+      rank: 6,
+      seed: "seed-123",
+      learnedIds: ["hundred-blade-halo", "immovable-mountain"]
+    })).toEqual([]);
+  });
+
   it("resolves mastery choice definitions across refinements, transformations, Skill 2, and unknown ids", () => {
     expect(getMasteryChoiceDefinition("sword-intent-sharpening")).toMatchObject({
       id: "sword-intent-sharpening",

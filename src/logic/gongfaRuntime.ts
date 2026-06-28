@@ -107,6 +107,8 @@ export type GongfaRuntimeEvent =
     }
   | { kind: "projectile-hit"; damage: number }
   | { kind: "jinfeng-wave-hit"; learnedMasteryIds: string[] }
+  | { kind: "gengjin-defensive-hit"; learnedMasteryIds: string[] }
+  | { kind: "evade"; learnedMasteryIds: string[] }
   | {
       kind: "yujian-projectile-hit";
       targetId: number;
@@ -950,6 +952,15 @@ export function advanceGongfaRuntimeForProjectileHit(
     commands.push(...result.commands);
   }
 
+  if (facts.sourceGongfaId === "gengjin-huti" && next.gengjin) {
+    const result = advanceGongfaRuntime(next, {
+      kind: "gengjin-defensive-hit",
+      learnedMasteryIds: facts.learnedMasteryIds
+    });
+    next = result.runtime;
+    commands.push(...result.commands);
+  }
+
   return { runtime: next, commands };
 }
 
@@ -1122,6 +1133,25 @@ export function advanceGongfaRuntime(
     return { runtime: next, commands };
   }
 
+  if (event.kind === "gengjin-defensive-hit") {
+    // Ten-Thousand Armor Resonance: defensive-tagged Skill hits build Guard.
+    if (next.gengjin && event.learnedMasteryIds.includes("ten-thousand-armor-resonance")) {
+      next.gengjin.guardValue = Math.min(100, next.gengjin.guardValue + 1.5);
+      syncGengjinCombat(next);
+    }
+    return { runtime: next, commands };
+  }
+
+  if (event.kind === "evade") {
+    // Flowing Iron Body: each Evade grants Guard and a defensive shockwave.
+    if (next.gengjin && event.learnedMasteryIds.includes("flowing-iron-body")) {
+      next.gengjin.guardValue = Math.min(100, next.gengjin.guardValue + 20);
+      syncGengjinCombat(next);
+      commands.push({ kind: "aura-burst", damage: next.combat.damage, count: 8 });
+    }
+    return { runtime: next, commands };
+  }
+
   if (event.kind === "crimson-projectile-hit") {
     const state = next.crimsonFurnace;
     if (!state) {
@@ -1251,11 +1281,16 @@ export function advanceGongfaRuntime(
   }
 
   if (next.gengjin) {
+    const learnedMasteryIds = event.learnedMasteryIds ?? [];
+    // Immovable Mountain: standing still greatly increases Guard gain (and, via
+    // higher Guard, defensive output through syncGengjinCombat).
+    const stillGuardBonus =
+      learnedMasteryIds.includes("immovable-mountain") && !event.isMoving ? 1.8 : 1;
     if (event.nearbyEnemyCount > 0) {
       next.gengjin.guardValue = Math.min(
         100,
         next.gengjin.guardValue +
-          event.nearbyEnemyCount * next.gengjin.guardBuildRate * deltaSeconds
+          event.nearbyEnemyCount * next.gengjin.guardBuildRate * stillGuardBonus * deltaSeconds
       );
       next.gengjin.bladeShellCharge = Math.min(
         next.gengjin.bladeShellThreshold,

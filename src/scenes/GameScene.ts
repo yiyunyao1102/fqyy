@@ -335,6 +335,7 @@ export class GameScene extends Phaser.Scene {
       if (this.evade.tryStart({ x: movement.x, y: movement.y })) {
         this.maybeCutGaleStepCorridor();
         this.maybeCutIronWake();
+        this.maybeFlowingIronBody();
       }
     }
     const evadeState = this.evade.state;
@@ -1011,6 +1012,20 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private maybeFlowingIronBody(): void {
+    if (!this.gongfaRuntime?.gengjin) {
+      return;
+    }
+
+    const result = advanceGongfaRuntime(this.gongfaRuntime, {
+      kind: "evade",
+      learnedMasteryIds: this.runState.masteryLearnedIds
+    });
+    this.gongfaRuntime = result.runtime;
+    this.combatState = result.runtime.combat;
+    this.executeGongfaRuntimeCommands(result.commands);
+  }
+
   private maybeReboundEdge(enemy: Enemy): void {
     if (!this.gongfaRuntime || !enemy.active) {
       return;
@@ -1044,6 +1059,7 @@ export class GameScene extends Phaser.Scene {
         this.player.y + Math.sin(angle) * 10,
         this.combatState.projectileTexture
       );
+      projectile.sourceGongfaId = this.gongfaRuntime?.gongfaId;
       projectile.damage = damage;
       projectile.pierceRemaining = this.combatState.pierce;
       projectile.setTint(this.combatState.tint);
