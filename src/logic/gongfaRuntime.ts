@@ -68,6 +68,7 @@ export interface GengjinState {
   bladeShellThreshold: number;
   bladeShellCooldownRemaining: number;
   bladeShellCasts: number;
+  gengjinPulseCooldownRemaining: number;
 }
 
 export interface BurningRingState {
@@ -186,6 +187,7 @@ export type GongfaRuntimeCommand =
       aimMode: "nearest" | "last";
       growthScale?: number;
     }
+  | { kind: "gravity-pull"; radius: number; strength: number }
   | {
       kind: "aura-burst";
       damage: number;
@@ -560,7 +562,8 @@ const gengjinDefaults: GengjinState = {
   bladeShellCharge: 0,
   bladeShellThreshold: 100,
   bladeShellCooldownRemaining: 0,
-  bladeShellCasts: 0
+  bladeShellCasts: 0,
+  gengjinPulseCooldownRemaining: 0
 };
 
 const burningRingDefaults: BurningRingState = {
@@ -1149,6 +1152,14 @@ export function advanceGongfaRuntime(
       syncGengjinCombat(next);
       commands.push({ kind: "aura-burst", damage: next.combat.damage, count: 8 });
     }
+    // Unbroken Advance: Evade becomes a Guard-scaled breakthrough strike.
+    if (next.gengjin && event.learnedMasteryIds.includes("unbroken-advance")) {
+      commands.push({
+        kind: "aura-burst",
+        damage: next.combat.damage + Math.floor(next.gengjin.guardValue * 0.6),
+        count: 10
+      });
+    }
     return { runtime: next, commands };
   }
 
@@ -1309,6 +1320,29 @@ export function advanceGongfaRuntime(
       );
     }
     syncGengjinCombat(next);
+
+    // Rank-9 Guard pulses share one cooldown (Iron Gravity Domain and Unbroken
+    // Advance are exclusive milestone choices, so at most one ever fires).
+    next.gengjin.gengjinPulseCooldownRemaining = Math.max(
+      0,
+      next.gengjin.gengjinPulseCooldownRemaining - Math.max(0, event.deltaMs)
+    );
+    if (next.gengjin.gengjinPulseCooldownRemaining === 0) {
+      // Iron Gravity Domain: at high Guard, pull enemies into an aura burst.
+      if (learnedMasteryIds.includes("iron-gravity-domain") && next.gengjin.guardValue >= 60) {
+        next.gengjin.gengjinPulseCooldownRemaining = 1500;
+        commands.push({ kind: "gravity-pull", radius: 200, strength: 220 });
+        commands.push({ kind: "aura-burst", damage: next.combat.damage, count: 10 });
+      } else if (
+        // Unbroken Advance: high-Guard movement strikes nearby enemies.
+        learnedMasteryIds.includes("unbroken-advance") &&
+        event.isMoving &&
+        next.gengjin.guardValue >= 40
+      ) {
+        next.gengjin.gengjinPulseCooldownRemaining = 900;
+        commands.push({ kind: "aura-burst", damage: next.combat.damage, count: 6 });
+      }
+    }
 
     const skill2 = getAuthoredSkill2Plan(event.skill2Id);
     if (skill2?.trigger === "threshold") {
@@ -1530,6 +1564,10 @@ export function planGongfaAttack(
         // Hundred-Blade Halo: Guard fuels a denser rotating blade halo.
         if (runtime.gengjin && learnedMasteryIds.includes("hundred-blade-halo")) {
           count += Math.floor(runtime.gengjin.guardValue / 12);
+        }
+        // Gengjin Fortress: current Guard manifests as orbiting defensive blades.
+        if (runtime.gengjin && learnedMasteryIds.includes("gengjin-fortress")) {
+          count += Math.floor(runtime.gengjin.guardValue / 8);
         }
         return [
           {

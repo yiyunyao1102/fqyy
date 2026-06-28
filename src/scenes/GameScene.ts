@@ -1049,6 +1049,14 @@ export class GameScene extends Phaser.Scene {
     );
   }
 
+  private pullEnemiesToward(radius: number, strength: number): void {
+    for (const enemy of this.getEnemiesWithinRadius(radius)) {
+      if (enemy.active) {
+        this.physics.moveToObject(enemy, this.player, strength);
+      }
+    }
+  }
+
   private emitAuraBurst(damage: number, count: number): void {
     const projectileCount = Math.max(4, count);
     for (let i = 0; i < projectileCount; i += 1) {
@@ -1298,6 +1306,11 @@ export class GameScene extends Phaser.Scene {
 
       if (command.kind === "aura-burst") {
         this.emitAuraBurst(command.damage, command.count);
+        return;
+      }
+
+      if (command.kind === "gravity-pull") {
+        this.pullEnemiesToward(command.radius, command.strength);
         return;
       }
 

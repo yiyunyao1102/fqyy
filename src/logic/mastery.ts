@@ -182,6 +182,33 @@ export const masteryTransformationConfigs: MasteryChoiceDefinition[] = [
     requiredGongfaIds: ["gengjin-huti"],
     milestoneRank: 6,
     exclusivityGroup: "gengjin-huti:rank-6"
+  },
+  {
+    id: "gengjin-fortress",
+    name: "Gengjin Fortress",
+    lore: "Current Guard manifests as orbiting defensive blades.",
+    kind: "transformation",
+    requiredGongfaIds: ["gengjin-huti"],
+    milestoneRank: 9,
+    exclusivityGroup: "gengjin-huti:rank-9"
+  },
+  {
+    id: "iron-gravity-domain",
+    name: "Iron Gravity Domain",
+    lore: "At high Guard, pull nearby enemies into repeated aura bursts.",
+    kind: "transformation",
+    requiredGongfaIds: ["gengjin-huti"],
+    milestoneRank: 9,
+    exclusivityGroup: "gengjin-huti:rank-9"
+  },
+  {
+    id: "unbroken-advance",
+    name: "Unbroken Advance",
+    lore: "High-Guard movement strikes nearby enemies and empowers Evade.",
+    kind: "transformation",
+    requiredGongfaIds: ["gengjin-huti"],
+    milestoneRank: 9,
+    exclusivityGroup: "gengjin-huti:rank-9"
   }
 ];
 

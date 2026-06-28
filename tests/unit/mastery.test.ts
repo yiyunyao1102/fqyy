@@ -206,6 +206,35 @@ describe("mastery progression", () => {
     })).toEqual([]);
   });
 
+  it("offers exactly the Gengjin rank-9 Transformation milestone choices", () => {
+    expect(getDeterministicMasteryChoiceIds({
+      gongfaId: "gengjin-huti",
+      rank: 9,
+      seed: "seed-123",
+      learnedIds: ["hundred-blade-halo", "immovable-mountain"]
+    })).toEqual([
+      "gengjin-fortress",
+      "iron-gravity-domain",
+      "unbroken-advance"
+    ]);
+
+    expect(getMasteryChoiceDefinition("iron-gravity-domain")).toMatchObject({
+      name: "Iron Gravity Domain",
+      kind: "transformation",
+      milestoneRank: 9,
+      exclusivityGroup: "gengjin-huti:rank-9"
+    });
+  });
+
+  it("excludes sibling Transformations once one rank-9 Gengjin Transformation is learned", () => {
+    expect(getDeterministicMasteryChoiceIds({
+      gongfaId: "gengjin-huti",
+      rank: 9,
+      seed: "seed-123",
+      learnedIds: ["hundred-blade-halo", "immovable-mountain", "gengjin-fortress"]
+    })).toEqual([]);
+  });
+
   it("resolves mastery choice definitions across refinements, transformations, Skill 2, and unknown ids", () => {
     expect(getMasteryChoiceDefinition("sword-intent-sharpening")).toMatchObject({
       id: "sword-intent-sharpening",

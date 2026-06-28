@@ -1086,4 +1086,74 @@ describe("Gongfa runtime", () => {
     }).runtime;
     expect(inert.gengjin!.guardValue).toBe(before);
   });
+
+  it("Gengjin Fortress turns Guard into extra orbiting aura blades", () => {
+    const guarded = advanceGongfaRuntime(createGongfaRuntime({ gongfaId: "gengjin-huti" }), {
+      kind: "tick",
+      deltaMs: 8000,
+      nearbyEnemyCount: 15,
+      isMoving: false
+    }).runtime;
+    expect(guarded.gengjin!.guardValue).toBeGreaterThan(8);
+
+    const [fortress] = planGongfaAttack(guarded, 0, { learnedMasteryIds: ["gengjin-fortress"] });
+    const [plain] = planGongfaAttack(guarded, 0);
+    const fortressCount = fortress.kind === "aura-burst" ? fortress.count : 0;
+    const plainCount = plain.kind === "aura-burst" ? plain.count : 0;
+    expect(fortressCount).toBeGreaterThan(plainCount);
+  });
+
+  it("Iron Gravity Domain pulls and bursts at high Guard, then waits on cooldown", () => {
+    const guarded = advanceGongfaRuntime(createGongfaRuntime({ gongfaId: "gengjin-huti" }), {
+      kind: "tick",
+      deltaMs: 8000,
+      nearbyEnemyCount: 15,
+      isMoving: false
+    }).runtime;
+    expect(guarded.gengjin!.guardValue).toBeGreaterThanOrEqual(60);
+
+    const first = advanceGongfaRuntime(guarded, {
+      kind: "tick",
+      deltaMs: 16,
+      nearbyEnemyCount: 4,
+      isMoving: false,
+      learnedMasteryIds: ["iron-gravity-domain"]
+    });
+    expect(first.commands.some((command) => command.kind === "gravity-pull")).toBe(true);
+    expect(first.commands.some((command) => command.kind === "aura-burst")).toBe(true);
+    expect(first.runtime.gengjin!.gengjinPulseCooldownRemaining).toBeGreaterThan(0);
+
+    const second = advanceGongfaRuntime(first.runtime, {
+      kind: "tick",
+      deltaMs: 16,
+      nearbyEnemyCount: 4,
+      isMoving: false,
+      learnedMasteryIds: ["iron-gravity-domain"]
+    });
+    expect(second.commands.some((command) => command.kind === "gravity-pull")).toBe(false);
+  });
+
+  it("Unbroken Advance strikes on Evade and while moving at high Guard", () => {
+    const guarded = advanceGongfaRuntime(createGongfaRuntime({ gongfaId: "gengjin-huti" }), {
+      kind: "tick",
+      deltaMs: 8000,
+      nearbyEnemyCount: 15,
+      isMoving: false
+    }).runtime;
+
+    const evaded = advanceGongfaRuntime(guarded, {
+      kind: "evade",
+      learnedMasteryIds: ["unbroken-advance"]
+    });
+    expect(evaded.commands.some((command) => command.kind === "aura-burst")).toBe(true);
+
+    const moving = advanceGongfaRuntime(guarded, {
+      kind: "tick",
+      deltaMs: 16,
+      nearbyEnemyCount: 4,
+      isMoving: true,
+      learnedMasteryIds: ["unbroken-advance"]
+    });
+    expect(moving.commands.some((command) => command.kind === "aura-burst")).toBe(true);
+  });
 });
