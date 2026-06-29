@@ -761,6 +761,10 @@ export class GameScene extends Phaser.Scene {
     this.player.stats.maxHealth += maxHealthDelta;
     if (maxHealthDelta > 0) {
       this.player.heal(maxHealthDelta);
+    } else if (maxHealthDelta < 0) {
+      // Replacing a vitality treasure with a smaller one must not leave current
+      // health above the new maximum.
+      this.player.stats.health = Math.min(this.player.stats.health, this.player.stats.maxHealth);
     }
     this.player.stats.moveSpeed += totals.moveSpeed - applied.moveSpeed;
     this.player.stats.magnetRadius += totals.magnetRadius - applied.magnetRadius;
@@ -801,9 +805,12 @@ export class GameScene extends Phaser.Scene {
       if (this.finalBossHazardAccumulator >= 1000) {
         this.finalBossHazardAccumulator = 0;
         this.finalBossSafeZoneRadius = Math.max(110, this.finalBossSafeZoneRadius - 6);
-        const drift = this.runState.finalBossPhaseIndex % 2 === 0 ? 80 : -80;
-        this.finalBossSafeZoneX = playerPosition.x + drift;
-        this.finalBossSafeZoneY = playerPosition.y - drift * 0.6;
+        // The zone drifts on its own each second (placed at the player at phase
+        // start) rather than tracking the player, so standing still falls
+        // outside it and the player must chase the shrinking safe ground.
+        const drift = this.runState.finalBossPhaseIndex % 2 === 0 ? 44 : -44;
+        this.finalBossSafeZoneX += drift;
+        this.finalBossSafeZoneY -= drift * 0.6;
         const distance = Phaser.Math.Distance.Between(
           playerPosition.x,
           playerPosition.y,

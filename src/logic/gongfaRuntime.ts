@@ -1193,7 +1193,17 @@ export function advanceGongfaRuntime(
       });
     }
 
-    // Intent Domain: hits leave an Intent-scaled blade field.
+    // Unbroken Sword Intent: a successful hit builds a stack and refreshes its
+    // duration (applied after this hit's Skill-1 effects). Myriad Blade
+    // Resonance feeds Intent faster.
+    const intentGain = event.learnedMasteryIds.includes("myriad-blade-resonance") ? 2 : 1;
+    state.intentStacks = Math.min(5, state.intentStacks + intentGain);
+    state.intentDurationRemaining = INTENT_DURATION_MS;
+    syncYujianCombat(next);
+
+    // Intent Domain: hits leave an Intent-scaled blade field. Evaluated after
+    // the gain, matching the equivalent Ember (searing-domain) and Surge
+    // (domain) capstones so all three include the just-added stack.
     if (event.learnedMasteryIds.includes("intent-domain") && state.intentStacks > 0) {
       commands.push({
         kind: "aura-burst",
@@ -1201,14 +1211,6 @@ export function advanceGongfaRuntime(
         count: 2 + state.intentStacks
       });
     }
-
-    // Unbroken Sword Intent: a successful hit builds a stack and refreshes its
-    // duration (applied after this hit's effects). Myriad Blade Resonance feeds
-    // Intent faster.
-    const intentGain = event.learnedMasteryIds.includes("myriad-blade-resonance") ? 2 : 1;
-    state.intentStacks = Math.min(5, state.intentStacks + intentGain);
-    state.intentDurationRemaining = INTENT_DURATION_MS;
-    syncYujianCombat(next);
 
     return { runtime: next, commands };
   }
