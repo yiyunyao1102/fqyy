@@ -49,6 +49,33 @@ export const masteryTransformationConfigs: MasteryChoiceDefinition[] = [
     exclusivityGroup: "blazing-feather-art:rank-3"
   },
   {
+    id: "banked-embers",
+    name: "Banked Embers",
+    lore: "Well-stoked Embers no longer fade below half.",
+    kind: "transformation",
+    requiredGongfaIds: ["blazing-feather-art"],
+    milestoneRank: 6,
+    exclusivityGroup: "blazing-feather-art:rank-6"
+  },
+  {
+    id: "ember-cascade",
+    name: "Ember Cascade",
+    lore: "Each feather hit stokes Embers twice as fast.",
+    kind: "transformation",
+    requiredGongfaIds: ["blazing-feather-art"],
+    milestoneRank: 6,
+    exclusivityGroup: "blazing-feather-art:rank-6"
+  },
+  {
+    id: "ember-burst",
+    name: "Ember Burst",
+    lore: "At full Embers, the next volley erupts with extra feathers.",
+    kind: "transformation",
+    requiredGongfaIds: ["blazing-feather-art"],
+    milestoneRank: 6,
+    exclusivityGroup: "blazing-feather-art:rank-6"
+  },
+  {
     id: "execution-seal",
     name: "Execution Seal",
     lore: "Repeated Yujian Skill 1 hits escalate against a marked priority target.",

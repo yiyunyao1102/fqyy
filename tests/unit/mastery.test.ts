@@ -477,6 +477,22 @@ describe("mastery progression", () => {
     })).toEqual([]);
   });
 
+  it("offers exactly the Blazing Feather rank-6 Transformation milestone choices", () => {
+    expect(getDeterministicMasteryChoiceIds({
+      gongfaId: "blazing-feather-art",
+      rank: 6,
+      seed: "seed-123",
+      learnedIds: ["feather-storm"]
+    })).toEqual(["banked-embers", "ember-cascade", "ember-burst"]);
+
+    expect(getDeterministicMasteryChoiceIds({
+      gongfaId: "blazing-feather-art",
+      rank: 6,
+      seed: "seed-123",
+      learnedIds: ["feather-storm", "banked-embers"]
+    })).toEqual([]);
+  });
+
   it("adds the rank-10 Skill 2 family into the post-rank-10 pool", () => {
     expect(
       getDeterministicMasteryChoiceIds({

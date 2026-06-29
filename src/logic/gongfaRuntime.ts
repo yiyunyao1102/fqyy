@@ -20,6 +20,15 @@ export interface GongfaRuntime {
   gengjin?: GengjinState;
   burningRing?: BurningRingState;
   crimsonFurnace?: CrimsonFurnaceState;
+  blazingFeather?: BlazingFeatherState;
+}
+
+export interface BlazingFeatherState {
+  // Ember Surge passive: hits stoke Embers that boost feather damage and add
+  // feathers; Embers fade over time.
+  emberStacks: number;
+  emberDurationRemaining: number;
+  emberAppliedDamageBonus: number;
 }
 
 export interface GongfaProjectileHitMode {
@@ -115,6 +124,7 @@ export type GongfaRuntimeEvent =
     }
   | { kind: "projectile-hit"; damage: number; learnedMasteryIds?: string[] }
   | { kind: "jinfeng-wave-hit"; learnedMasteryIds: string[] }
+  | { kind: "blazing-feather-hit"; learnedMasteryIds: string[] }
   | { kind: "gengjin-defensive-hit"; learnedMasteryIds: string[] }
   | { kind: "evade"; learnedMasteryIds: string[] }
   | {
@@ -503,6 +513,7 @@ interface CreateGongfaRuntimeInput {
   gengjin?: Partial<GengjinState>;
   burningRing?: Partial<BurningRingState>;
   crimsonFurnace?: Partial<CrimsonFurnaceState>;
+  blazingFeather?: Partial<BlazingFeatherState>;
 }
 
 export interface GongfaRuntimeCheckpointFields {
@@ -617,6 +628,25 @@ const yujianDefaults: YujianState = {
 
 const INTENT_DURATION_MS = 3000;
 
+const EMBER_DURATION_MS = 2600;
+const MAX_EMBER_STACKS = 6;
+
+const blazingFeatherDefaults: BlazingFeatherState = {
+  emberStacks: 0,
+  emberDurationRemaining: 0,
+  emberAppliedDamageBonus: 0
+};
+
+function syncBlazingFeatherCombat(runtime: GongfaRuntime): void {
+  const state = runtime.blazingFeather;
+  if (!state) {
+    return;
+  }
+  const desiredDamageBonus = state.emberStacks * 2;
+  runtime.combat.damage += desiredDamageBonus - state.emberAppliedDamageBonus;
+  state.emberAppliedDamageBonus = desiredDamageBonus;
+}
+
 function syncYujianCombat(runtime: GongfaRuntime): void {
   const state = runtime.yujian;
   if (!state) {
@@ -653,7 +683,8 @@ function copyRuntime(runtime: GongfaRuntime): GongfaRuntime {
     jinfeng: runtime.jinfeng ? { ...runtime.jinfeng } : undefined,
     gengjin: runtime.gengjin ? { ...runtime.gengjin } : undefined,
     burningRing: runtime.burningRing ? { ...runtime.burningRing } : undefined,
-    crimsonFurnace: runtime.crimsonFurnace ? { ...runtime.crimsonFurnace } : undefined
+    crimsonFurnace: runtime.crimsonFurnace ? { ...runtime.crimsonFurnace } : undefined,
+    blazingFeather: runtime.blazingFeather ? { ...runtime.blazingFeather } : undefined
   };
 }
 
@@ -804,6 +835,10 @@ export function createGongfaRuntime(input: CreateGongfaRuntimeInput): GongfaRunt
             // This is a derived projection onto combat range, not durable state.
             pressureAppliedRadiusBonus: 0
           }
+        : undefined,
+    blazingFeather:
+      input.gongfaId === "blazing-feather-art"
+        ? { ...blazingFeatherDefaults, ...input.blazingFeather }
         : undefined
   };
 
@@ -811,6 +846,7 @@ export function createGongfaRuntime(input: CreateGongfaRuntimeInput): GongfaRunt
   syncGengjinCombat(runtime);
   syncBurningRingCombat(runtime);
   syncCrimsonFurnaceCombat(runtime);
+  syncBlazingFeatherCombat(runtime);
   return runtime;
 }
 
@@ -995,6 +1031,15 @@ export function advanceGongfaRuntimeForProjectileHit(
     commands.push(...result.commands);
   }
 
+  if (facts.sourceGongfaId === "blazing-feather-art" && next.blazingFeather) {
+    const result = advanceGongfaRuntime(next, {
+      kind: "blazing-feather-hit",
+      learnedMasteryIds: facts.learnedMasteryIds
+    });
+    next = result.runtime;
+    commands.push(...result.commands);
+  }
+
   if (facts.sourceGongfaId === "gengjin-huti" && next.gengjin) {
     const result = advanceGongfaRuntime(next, {
       kind: "gengjin-defensive-hit",
@@ -1029,6 +1074,7 @@ export function advanceGongfaRuntime(
     !runtime.gengjin &&
     !runtime.burningRing &&
     !runtime.crimsonFurnace &&
+    !runtime.blazingFeather &&
     event.kind !== "skill2"
   ) {
     return { runtime, commands: [] };
@@ -1197,6 +1243,19 @@ export function advanceGongfaRuntime(
     return { runtime: next, commands };
   }
 
+  if (event.kind === "blazing-feather-hit") {
+    const state = next.blazingFeather;
+    if (!state) {
+      return { runtime: next, commands };
+    }
+    // Ember Surge: hits stoke Embers; Ember Cascade stokes them faster.
+    const gain = event.learnedMasteryIds.includes("ember-cascade") ? 2 : 1;
+    state.emberStacks = Math.min(MAX_EMBER_STACKS, state.emberStacks + gain);
+    state.emberDurationRemaining = EMBER_DURATION_MS;
+    syncBlazingFeatherCombat(next);
+    return { runtime: next, commands };
+  }
+
   if (event.kind === "gengjin-defensive-hit") {
     // Ten-Thousand Armor Resonance: defensive-tagged Skill hits build Guard.
     if (next.gengjin && event.learnedMasteryIds.includes("ten-thousand-armor-resonance")) {
@@ -1347,6 +1406,24 @@ export function advanceGongfaRuntime(
         next.yujian.intentDurationRemaining = INTENT_DURATION_MS;
       }
       syncYujianCombat(next);
+    }
+  }
+
+  if (next.blazingFeather && next.blazingFeather.emberStacks > 0) {
+    const blazingLearned = event.learnedMasteryIds ?? [];
+    next.blazingFeather.emberDurationRemaining = Math.max(
+      0,
+      next.blazingFeather.emberDurationRemaining - Math.max(0, event.deltaMs)
+    );
+    if (next.blazingFeather.emberDurationRemaining === 0) {
+      // Banked Embers holds Embers at half (3 of 6) once they are well stoked.
+      const floor =
+        blazingLearned.includes("banked-embers") && next.blazingFeather.emberStacks >= 3 ? 3 : 0;
+      next.blazingFeather.emberStacks = Math.max(floor, next.blazingFeather.emberStacks - 1);
+      if (next.blazingFeather.emberStacks > 0) {
+        next.blazingFeather.emberDurationRemaining = EMBER_DURATION_MS;
+      }
+      syncBlazingFeatherCombat(next);
     }
   }
 
@@ -1668,6 +1745,17 @@ export function planGongfaAttack(
       // Sword Crown: current Intent crowns the volley with spectral swords.
       if (runtime.yujian && learnedMasteryIds.includes("sword-crown")) {
         count += runtime.yujian.intentStacks;
+      }
+      // Ember Surge adds a feather per two Embers; Ember Burst spends a full
+      // charge for an extra flurry.
+      if (runtime.blazingFeather) {
+        count += Math.floor(runtime.blazingFeather.emberStacks / 2);
+        if (
+          learnedMasteryIds.includes("ember-burst") &&
+          runtime.blazingFeather.emberStacks >= MAX_EMBER_STACKS
+        ) {
+          count += 3;
+        }
       }
       const commands: GongfaRuntimeCommand[] = [
         {

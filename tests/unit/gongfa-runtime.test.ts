@@ -1482,6 +1482,79 @@ describe("Gongfa runtime", () => {
     expect(swift.combat.projectileSpeed).toBe(base.combat.projectileSpeed + 80);
   });
 
+  it("Ember Surge builds on hits, boosts damage and feather count, and fades", () => {
+    let runtime = createGongfaRuntime({ gongfaId: "blazing-feather-art" });
+    const baseDamage = runtime.combat.damage;
+    const [basePlan] = planGongfaAttack(runtime, 0);
+    const baseCount = basePlan.kind === "homing-volley" ? basePlan.count : 0;
+
+    for (let i = 0; i < 4; i += 1) {
+      runtime = advanceGongfaRuntimeForProjectileHit(runtime, {
+        sourceGongfaId: "blazing-feather-art",
+        targetId: 1,
+        damage: 10,
+        learnedMasteryIds: [],
+        baseDamageKilledTarget: false,
+        embedStacks: 0,
+        embedPower: 0
+      }).runtime;
+    }
+    expect(runtime.blazingFeather!.emberStacks).toBe(4);
+    expect(runtime.combat.damage).toBeGreaterThan(baseDamage);
+    const [chargedPlan] = planGongfaAttack(runtime, 0);
+    const chargedCount = chargedPlan.kind === "homing-volley" ? chargedPlan.count : 0;
+    expect(chargedCount).toBeGreaterThan(baseCount);
+
+    const faded = advanceGongfaRuntime(runtime, {
+      kind: "tick",
+      deltaMs: 4000,
+      nearbyEnemyCount: 0,
+      isMoving: false
+    }).runtime;
+    expect(faded.blazingFeather!.emberStacks).toBeLessThan(4);
+  });
+
+  it("Ember Cascade builds Embers faster; Banked Embers holds them at half", () => {
+    const base = createGongfaRuntime({ gongfaId: "blazing-feather-art" });
+    const cascade = advanceGongfaRuntimeForProjectileHit(base, {
+      sourceGongfaId: "blazing-feather-art",
+      targetId: 1,
+      damage: 10,
+      learnedMasteryIds: ["ember-cascade"],
+      baseDamageKilledTarget: false,
+      embedStacks: 0,
+      embedPower: 0
+    }).runtime;
+    expect(cascade.blazingFeather!.emberStacks).toBe(2);
+
+    let banked = createGongfaRuntime({
+      gongfaId: "blazing-feather-art",
+      blazingFeather: { emberStacks: 6, emberDurationRemaining: 10 }
+    });
+    for (let i = 0; i < 10; i += 1) {
+      banked = advanceGongfaRuntime(banked, {
+        kind: "tick",
+        deltaMs: 3000,
+        nearbyEnemyCount: 0,
+        isMoving: false,
+        learnedMasteryIds: ["banked-embers"]
+      }).runtime;
+    }
+    expect(banked.blazingFeather!.emberStacks).toBe(3);
+  });
+
+  it("Ember Burst adds feathers only at full Embers", () => {
+    const full = createGongfaRuntime({
+      gongfaId: "blazing-feather-art",
+      blazingFeather: { emberStacks: 6 }
+    });
+    const [burst] = planGongfaAttack(full, 0, { learnedMasteryIds: ["ember-burst"] });
+    const [plain] = planGongfaAttack(full, 0);
+    const burstCount = burst.kind === "homing-volley" ? burst.count : 0;
+    const plainCount = plain.kind === "homing-volley" ? plain.count : 0;
+    expect(burstCount).toBe(plainCount + 3);
+  });
+
   it("Sword Crown and Intent Domain scale with Intent; Void-Step looses a volley", () => {
     let runtime = createGongfaRuntime({ gongfaId: "yujian-jue" });
     for (let i = 0; i < 3; i += 1) {
