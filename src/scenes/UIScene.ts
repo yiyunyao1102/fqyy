@@ -46,6 +46,7 @@ interface HudState {
 }
 
 export class UIScene extends Phaser.Scene {
+  private hudBars!: Phaser.GameObjects.Graphics;
   private hudText!: Phaser.GameObjects.Text;
   private messageText!: Phaser.GameObjects.Text;
   private pauseText!: Phaser.GameObjects.Text;
@@ -60,8 +61,9 @@ export class UIScene extends Phaser.Scene {
 
   create(): void {
     this.inputController = new InputController(this);
+    this.hudBars = this.add.graphics().setScrollFactor(0).setDepth(219);
     this.hudText = this.add
-      .text(18, 16, "", {
+      .text(18, 44, "", {
         fontFamily: "Trebuchet MS, Noto Sans SC, sans-serif",
         fontSize: "18px",
         color: "#f4f8ff",
@@ -115,6 +117,8 @@ export class UIScene extends Phaser.Scene {
     if (!hud) {
       return;
     }
+
+    this.drawVitalityBar(hud);
 
     this.hudText.setText(
       buildHudLines({
@@ -179,6 +183,22 @@ export class UIScene extends Phaser.Scene {
   private onHideChoicePanel(): void {
     this.levelUpVisible = false;
     this.levelUpPanel.hide();
+  }
+
+  private drawVitalityBar(hud: HudState): void {
+    const x = 18;
+    const y = 16;
+    const w = 200;
+    const h = 18;
+    const ratio = hud.maxHealth > 0 ? Math.max(0, Math.min(1, hud.health / hud.maxHealth)) : 0;
+    const color = ratio > 0.5 ? 0x6bd06b : ratio > 0.25 ? 0xe0c060 : 0xe06b6b;
+    this.hudBars.clear();
+    this.hudBars.fillStyle(0x1a2230, 0.85);
+    this.hudBars.fillRoundedRect(x - 3, y - 3, w + 6, h + 6, 5);
+    this.hudBars.fillStyle(0x0c1118, 1);
+    this.hudBars.fillRect(x, y, w, h);
+    this.hudBars.fillStyle(color, 1);
+    this.hudBars.fillRect(x, y, w * ratio, h);
   }
 
   private onResize(gameSize: Phaser.Structs.Size): void {

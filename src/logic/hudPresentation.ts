@@ -32,36 +32,66 @@ export interface HudPresentationState {
   spiritTreasures: string;
 }
 
+/**
+ * The active build's signature resource, or undefined when none is engaged.
+ * Only the meter that matters for the current Gongfa is surfaced, so the HUD
+ * never shows a wall of zeroed-out stats.
+ */
+function buildResourceLine(state: HudPresentationState): string | undefined {
+  if (state.galeMomentum > 0) {
+    return `Gale Momentum: ${state.galeMomentum.toFixed(1)}`;
+  }
+  if (state.guard > 0) {
+    const mitigation = `${(state.guardMitigation * 100).toFixed(0)}% mitigation`;
+    const shell = state.bladeShellCasts > 0 ? ` · Blade Shell x${state.bladeShellCasts}` : "";
+    return `Guard: ${state.guard.toFixed(0)} · ${mitigation}${shell}`;
+  }
+  return undefined;
+}
+
 export function buildHudLines(state: HudPresentationState): string[] {
-  return [
-    "Cultivator: Outer Peak Wanderer",
-    `Stage: ${state.stageName}`,
-    `Phase: ${state.realmPhase} | Qi: ${state.realmProgress} / 100`,
-    `Stage breakthrough: ${state.stageBreakthroughReady ? "ready" : "waiting"}`,
-    `Foundation Growth: ${state.foundationGrowthTransactions}`,
-    formatMasteryHudLine({
-      masteryRank: state.masteryRank,
-      masteryProgress: state.masteryProgress,
-      masterySkill2: state.masterySkill2,
-      masterySkill2Casts: state.masterySkill2Casts
-    }),
-    `Gale Momentum: ${state.galeMomentum.toFixed(2)} | Skill Tags: ${state.skillTags || "none"}`,
-    `Guard: ${state.guard.toFixed(1)} | Mitigation: ${(state.guardMitigation * 100).toFixed(
-      0
-    )}% | Blade Shell: ${state.bladeShellCasts} (${state.bladeShellCharge.toFixed(0)}%)`,
-    `Linggen: ${state.linggenName} | Grades: ${state.linggenGrades}`,
-    `Gongfa: ${state.gongfaName}`,
+  const phase = state.realmPhase.charAt(0).toUpperCase() + state.realmPhase.slice(1);
+  const lines: string[] = [
+    `${state.stageName} · ${phase}`,
+    `Qi: ${state.realmProgress} / 100${state.stageBreakthroughReady ? " · breakthrough ready" : ""}`,
     `Vitality: ${Math.ceil(state.health)} / ${state.maxHealth}`,
-    `Method: ${state.methodCount} | Damage: ${state.methodDamage} | Cooldown: ${Math.round(
-      state.methodCooldownMs
-    )}ms`,
-    `Movement: ${state.moveSpeed} | Kills: ${state.kills}`,
+    `Gongfa: ${state.gongfaName}`
+  ];
+
+  if (state.gongfaName !== "Crude Qi Thread") {
+    lines.push(
+      formatMasteryHudLine({
+        masteryRank: state.masteryRank,
+        masteryProgress: state.masteryProgress,
+        masterySkill2: state.masterySkill2,
+        masterySkill2Casts: state.masterySkill2Casts
+      })
+    );
+  }
+
+  const resource = buildResourceLine(state);
+  if (resource) {
+    lines.push(resource);
+  }
+
+  if (state.linggenName !== "Unrevealed") {
+    lines.push(`Linggen: ${state.linggenName} · ${state.linggenGrades}`);
+  }
+
+  lines.push(
     state.evadeActive
       ? "Evade: Active"
       : state.evadeCooldownRemainingMs > 0
         ? `Evade: ${(state.evadeCooldownRemainingMs / 1_000).toFixed(1)}s`
-        : "Evade: Ready",
-    `Lingcao: ${state.lingcaoCollected ? "claimed" : "unclaimed"}`,
-    `Spirit Treasures: ${state.spiritTreasures || "none"}`
-  ];
+        : "Evade: Ready"
+  );
+
+  if (state.spiritTreasures) {
+    lines.push(`Spirit Treasures: ${state.spiritTreasures}`);
+  }
+  if (!state.lingcaoCollected) {
+    lines.push("Lingcao: unclaimed — claim it to awaken your Linggen");
+  }
+
+  return lines;
 }

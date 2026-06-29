@@ -99,53 +99,36 @@ test("HUD mirrors the live run state from opening through Gongfa selection", asy
 
   const opening = await page.evaluate(() => window.__gameTest!.getSnapshot());
   expectHudLines(opening, [
-    "Cultivator: Outer Peak Wanderer",
-    "Stage: Lianqi",
-    "Phase: chuqi | Qi: 0 / 100",
-    "Stage breakthrough: waiting",
-    "Foundation Growth: 0",
-    "Mastery: Rank 0 | Progress 0 / 100 | Skill 2: Locked | Casts: 0",
-    "Gale Momentum: 0.00 | Skill Tags: none",
-    "Guard: 0.0 | Mitigation: 0% | Blade Shell: 0 (0%)",
-    "Linggen: Unrevealed | Grades: Hidden",
-    "Gongfa: Crude Qi Thread",
+    "Lianqi · Chuqi",
+    "Qi: 0 / 100",
     "Vitality: 100 / 100",
-    "Method: 1 | Damage: 9 | Cooldown: 1150ms",
-    "Movement: 220 | Kills: 0",
+    "Gongfa: Crude Qi Thread",
     "Evade: Ready",
-    "Lingcao: unclaimed",
-    "Spirit Treasures: none"
+    "Lingcao: unclaimed — claim it to awaken your Linggen"
   ]);
   await claimOpeningLingcao(page);
 
   const revealed = await page.evaluate(() => window.__gameTest!.getSnapshot());
   expect(revealed.choice?.title).toBe("Metal Linggen Revealed");
   expect(revealed.progression.lingcaoCollected).toBe(true);
-  expect(revealed.hud.lines[8]).toBe("Linggen: Unrevealed | Grades: Hidden");
-  expect(revealed.hud.lines[9]).toBe("Gongfa: Crude Qi Thread");
-  expect(revealed.hud.lines[14]).toBe("Lingcao: claimed");
+  // Linggen stays hidden and the Lingcao hint is gone until a Gongfa is chosen.
+  expect(revealed.hud.lines).toContain("Gongfa: Crude Qi Thread");
+  expect(revealed.hud.lines.some((l) => l.startsWith("Linggen:"))).toBe(false);
+  expect(revealed.hud.lines.some((l) => l.startsWith("Lingcao:"))).toBe(false);
 
   await page.evaluate(() => window.__gameTest!.selectChoice(0));
 
   const afterChoice = await page.evaluate(() => window.__gameTest!.getSnapshot());
   expect(afterChoice.choice).toBeUndefined();
-  expect(afterChoice.hud.lines.slice(0, 14)).toEqual([
-    "Cultivator: Outer Peak Wanderer",
-    "Stage: Lianqi",
-    "Phase: chuqi | Qi: 0 / 100",
-    "Stage breakthrough: waiting",
-    "Foundation Growth: 0",
-    "Mastery: Rank 0 | Progress 0 / 100 | Skill 2: Locked | Casts: 0",
-    "Gale Momentum: 0.00 | Skill Tags: projectile, metal, sword",
-    "Guard: 0.0 | Mitigation: 0% | Blade Shell: 0 (0%)",
-    "Linggen: Metal Linggen | Grades: Strong",
-    "Gongfa: Yujian Jue",
+  expectHudLines(afterChoice, [
+    "Lianqi · Chuqi",
+    "Qi: 0 / 100",
     "Vitality: 100 / 100",
-    "Method: 1 | Damage: 15 | Cooldown: 850ms",
-    "Movement: 220 | Kills: 0",
+    "Gongfa: Yujian Jue",
+    "Mastery: Rank 0 | Progress 0 / 100 | Skill 2: Locked | Casts: 0",
+    "Linggen: Metal Linggen · Strong",
     "Evade: Ready"
   ]);
-  expect(afterChoice.hud.lines[14]).toBe("Lingcao: claimed");
 });
 
 test("HUD shows evade readiness, active invulnerability, and cooldown", async ({ page }) => {
@@ -207,7 +190,7 @@ test("Qi at 100 marks the current Stage as breakthrough-ready in the live HUD", 
   const snapshot = await page.evaluate(() => window.__gameTest!.getSnapshot());
   expect(snapshot.progression.stage).toBe("lianqi");
   expect(snapshot.progression.stageBreakthroughReady).toBe(true);
-  expect(snapshot.hud.lines).toContain("Stage breakthrough: ready");
+  expect(snapshot.hud.lines.some((line) => line.includes("breakthrough ready"))).toBe(true);
 });
 
 test("HUD shows mastery gain, rank-up feedback, and the first realm cleanup", async ({
@@ -222,7 +205,9 @@ test("HUD shows mastery gain, rank-up feedback, and the first realm cleanup", as
   await collectQiOrb(page, 10);
   const afterSmallQi = await page.evaluate(() => window.__gameTest!.getSnapshot());
   expect(afterSmallQi.progression.masteryProgress).toBeGreaterThan(0);
-  expect(afterSmallQi.hud.lines[5]).toContain("Progress ");
+  expect(
+    afterSmallQi.hud.lines.some((line) => line.startsWith("Mastery:") && line.includes("Progress "))
+  ).toBe(true);
   expect(afterSmallQi.message).toBe("Yujian Jue circulates through your meridians.");
 
   await collectQiOrb(page, 100);
@@ -242,14 +227,13 @@ test("HUD shows mastery gain, rank-up feedback, and the first realm cleanup", as
 
   const phaseCleanup = await page.evaluate(() => window.__gameTest!.getSnapshot());
   expect(phaseCleanup.choice?.title).toBe("Phase Transition");
-  expect(phaseCleanup.hud.lines[2]).toBe("Phase: chuqi | Qi: 100 / 100");
-  expect(phaseCleanup.hud.lines[3]).toBe("Stage breakthrough: ready");
+  expect(phaseCleanup.hud.lines[0]).toBe("Lianqi · Chuqi");
+  expect(phaseCleanup.hud.lines).toContain("Qi: 100 / 100 · breakthrough ready");
 
   await page.evaluate(() => window.__gameTest!.selectChoice(0));
   const afterPhase = await page.evaluate(() => window.__gameTest!.getSnapshot());
-  expect(afterPhase.hud.lines[2]).toBe("Phase: zhongqi | Qi: 0 / 100");
-  expect(afterPhase.hud.lines[3]).toBe("Stage breakthrough: waiting");
-  expect(afterPhase.hud.lines[4]).toBe("Foundation Growth: 1");
+  expect(afterPhase.hud.lines[0]).toBe("Lianqi · Zhongqi");
+  expect(afterPhase.hud.lines).toContain("Qi: 0 / 100");
 });
 
 test("HUD state survives a checkpoint resume without changing the visible progression", async ({

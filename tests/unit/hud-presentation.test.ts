@@ -36,21 +36,14 @@ describe("HUD presentation", () => {
         evadeCooldownRemainingMs: 0
       })
     ).toEqual([
-      "Cultivator: Outer Peak Wanderer",
-      "Stage: Lianqi",
-      "Phase: chuqi | Qi: 37 / 100",
-      "Stage breakthrough: waiting",
-      "Foundation Growth: 1",
-      "Mastery: Rank 2 | Progress 14 / 100 | Skill 2: returning-sword-formation | Casts: 5",
-      "Gale Momentum: 1.23 | Skill Tags: projectile, sword",
-      "Guard: 7.4 | Mitigation: 25% | Blade Shell: 3 (42%)",
-      "Linggen: Metal Linggen | Grades: Strong",
-      "Gongfa: Yujian Jue",
+      "Lianqi · Chuqi",
+      "Qi: 37 / 100",
       "Vitality: 77 / 100",
-      "Method: 3 | Damage: 12 | Cooldown: 900ms",
-      "Movement: 250 | Kills: 8",
+      "Gongfa: Yujian Jue",
+      "Mastery: Rank 2 | Progress 14 / 100 | Skill 2: returning-sword-formation | Casts: 5",
+      "Gale Momentum: 1.2",
+      "Linggen: Metal Linggen · Strong",
       "Evade: Ready",
-      "Lingcao: claimed",
       "Spirit Treasures: Jade Heart Pendant, Windstep Talisman"
     ]);
   });
