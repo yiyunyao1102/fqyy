@@ -20,6 +20,7 @@ import { Enemy } from "../entities/Enemy";
 import { Lingcao } from "../entities/Lingcao";
 import { HealingPill } from "../entities/HealingPill";
 import { Player } from "../entities/Player";
+import { SoundFx } from "../audio/SoundFx";
 import { SpiritTreasure } from "../entities/SpiritTreasure";
 import {
   getSpiritTreasureConfig,
@@ -199,6 +200,7 @@ export class GameScene extends Phaser.Scene {
   private combatState: CombatState = { ...baselineState };
   private combatCooldownRemaining = 0;
   private msSinceDamage = 0;
+  private readonly sfx = new SoundFx();
   private readonly evade = new Evade();
   private choiceActive = false;
   private currentChoiceTitle?: string;
@@ -374,6 +376,7 @@ export class GameScene extends Phaser.Scene {
     const movement = this.inputController.getMovementVector();
     if (this.inputController.evadePressed) {
       if (this.evade.tryStart({ x: movement.x, y: movement.y })) {
+        this.sfx.evade();
         this.maybeCutGaleStepCorridor();
         this.maybeCutIronWake();
         this.applyEvadeRuntimeEffects();
@@ -456,6 +459,7 @@ export class GameScene extends Phaser.Scene {
     const diedFromHit = hitMode.appliesBaseDamage ? enemy.receiveDamage(projectile.damage) : false;
     if (hitMode.appliesBaseDamage) {
       this.spawnDamageNumber(enemy.x, enemy.y, projectile.damage);
+      this.sfx.hit();
     }
     let diedFromCommands = false;
 
@@ -621,6 +625,7 @@ export class GameScene extends Phaser.Scene {
 
   private collectOrb(orb: QiOrb): void {
     this.spawnPickupPop(orb.x, orb.y);
+    this.sfx.pickup();
     this.grantQi(orb.qiValue);
     orb.destroy();
     this.publishHud();
@@ -2121,6 +2126,7 @@ export class GameScene extends Phaser.Scene {
     this.resetGongfaPassiveState();
     this.applyGongfaStage();
     this.playFanfare(0xffe08a);
+    this.sfx.breakthrough();
     this.lastMessage = `${gongfaConfigs[gongfaId].name} circulates through your meridians.`;
     this.persistRunCheckpoint();
   }
@@ -2420,6 +2426,7 @@ export class GameScene extends Phaser.Scene {
 
   private handlePlayerDeath(message: string): void {
     this.cameras.main.shake(280, 0.013);
+    this.sfx.death();
     this.runState.gameOver = true;
     this.setPausedState(true);
     this.lastMessage = message;
@@ -2778,6 +2785,7 @@ export class GameScene extends Phaser.Scene {
 
     this.runState.masteryRank = targetRank;
     this.playFanfare(0x8ec5ff);
+    this.sfx.rankUp();
     this.lastMessage = formatMasteryRankUpMessage(
       gongfaConfigs[this.runState.mainGongfaId].name,
       targetRank
