@@ -321,6 +321,17 @@ describe("Gongfa runtime", () => {
     });
   });
 
+  it("keeps Yujian reversal accounting inert for non-Yujian runtimes", () => {
+    const runtime = createGongfaRuntime({ gongfaId: "jinfeng-gong" });
+
+    const result = advanceGongfaRuntime(runtime, {
+      kind: "yujian-reversal-spawned"
+    });
+
+    expect(result.runtime).toEqual(runtime);
+    expect(result.commands).toEqual([]);
+  });
+
   it("routes generic player improvements without leaking them into combat state", () => {
     const initial = createGongfaRuntime({ gongfaId: "yujian-jue" });
     const improved = applyGongfaImprovement(initial, "tempered-meridians");
@@ -629,6 +640,20 @@ describe("Gongfa runtime", () => {
         }
       }
     ]);
+  });
+
+  it("returns ordinary incoming damage for runtimes without defensive state", () => {
+    const runtime = createGongfaRuntime({ gongfaId: "burning-ring-scripture" });
+
+    const result = advanceGongfaRuntime(runtime, {
+      kind: "incoming-damage",
+      amount: 12.8,
+      skill2Id: "solar-flare-cycle",
+      learnedMasteryIds: []
+    });
+
+    expect(result.runtime).toEqual(runtime);
+    expect(result.commands).toEqual([{ kind: "incoming-damage", finalDamage: 12 }]);
   });
 
   it("interprets the authored Gengjin refinement families in the runtime", () => {

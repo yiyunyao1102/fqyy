@@ -629,7 +629,7 @@ export class GameScene extends Phaser.Scene {
           { sourceGongfaId: "yujian-jue" }
         );
 
-        if (this.gongfaRuntime?.yujian) {
+        if (this.gongfaRuntime) {
           const result = advanceGongfaRuntime(this.gongfaRuntime, {
             kind: "yujian-reversal-spawned"
           });
@@ -2761,7 +2761,7 @@ export class GameScene extends Phaser.Scene {
     this.msSinceDamage = 0;
     this.cameras.main.shake(110, 0.005);
 
-    if (this.gongfaRuntime?.gengjin || this.gongfaRuntime?.yujian) {
+    if (this.gongfaRuntime) {
       const result = advanceGongfaRuntime(this.gongfaRuntime, {
         kind: "incoming-damage",
         amount,
