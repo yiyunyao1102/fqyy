@@ -61,6 +61,7 @@ import {
   advanceGongfaRuntimeForProjectileHit,
   advanceGongfaRuntime,
   advanceTimedMasterySkill2Cooldown,
+  applyGongfaMasteryChoice,
   applyGongfaImprovement,
   createGongfaRuntime,
   createGongfaRuntimeFromCheckpoint,
@@ -2155,14 +2156,22 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    this.runState.masteryLearnedIds.push(choiceId);
+    const mastery = applyGongfaMasteryChoice(
+      {
+        masteryLearnedIds: this.runState.masteryLearnedIds,
+        masteryChoiceActive: this.runState.masteryChoiceActive,
+        masteryPendingRanks: this.runState.masteryPendingRanks
+      },
+      choiceId
+    );
+    this.runState.masteryLearnedIds = mastery.masteryLearnedIds;
+    this.runState.masteryChoiceActive = mastery.masteryChoiceActive;
+    this.runState.masteryPendingRanks = mastery.masteryPendingRanks;
     this.applyMasteryUpgradeEffect(choiceId);
     this.lastMessage = `${gongfaConfigs[this.runState.mainGongfaId].name} mastery deepens.`;
-    this.runState.masteryPendingRanks.shift();
     this.choiceActive = false;
     this.currentChoiceTitle = undefined;
     this.currentChoiceOptions = [];
-    this.runState.masteryChoiceActive = false;
     this.setPausedState(false);
     this.scene.get("ui").events.emit("hide-choice-panel");
     this.persistRunCheckpoint();

@@ -5,6 +5,7 @@ import {
   advanceGongfaRuntimeForProjectileHit,
   advanceGongfaRuntime,
   advanceTimedMasterySkill2Cooldown,
+  applyGongfaMasteryChoice,
   applyGongfaImprovement,
   createGongfaRuntime,
   createGongfaRuntimeFromCheckpoint,
@@ -178,6 +179,23 @@ describe("Gongfa runtime", () => {
     ).toMatchObject({
       masteryChoiceActive: false,
       masteryPendingRanks: [1, 2]
+    });
+  });
+
+  it("applies a Gongfa Mastery choice and advances the pending-rank queue", () => {
+    expect(
+      applyGongfaMasteryChoice(
+        {
+          masteryLearnedIds: ["sword-bloom"],
+          masteryChoiceActive: true,
+          masteryPendingRanks: [2, 3]
+        },
+        "execution-seal"
+      )
+    ).toEqual({
+      masteryLearnedIds: ["sword-bloom", "execution-seal"],
+      masteryChoiceActive: false,
+      masteryPendingRanks: [3]
     });
   });
 

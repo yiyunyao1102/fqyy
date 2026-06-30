@@ -505,6 +505,12 @@ export interface GongfaMasteryProgressResult {
   };
 }
 
+export interface GongfaMasteryChoiceState {
+  masteryLearnedIds: string[];
+  masteryChoiceActive: boolean;
+  masteryPendingRanks: number[];
+}
+
 export function advanceTimedMasterySkill2Cooldown(
   skill2Id: string | undefined,
   cooldownRemainingMs: number,
@@ -585,6 +591,18 @@ export function advanceGongfaMasteryProgress(
       previousRank,
       targetRank
     }
+  };
+}
+
+export function applyGongfaMasteryChoice(
+  state: GongfaMasteryChoiceState,
+  choiceId: string
+): GongfaMasteryChoiceState {
+  const [, ...remainingPendingRanks] = state.masteryPendingRanks;
+  return {
+    masteryLearnedIds: [...state.masteryLearnedIds, choiceId],
+    masteryChoiceActive: false,
+    masteryPendingRanks: remainingPendingRanks
   };
 }
 
