@@ -17,6 +17,7 @@ export const textureSpecs = {
   "enemy-shade": { width: 34, height: 34 },
   "healing-pill": { width: 20, height: 20 },
   "spirit-treasure": { width: 18, height: 18 },
+  "grid-cell": { width: 64, height: 64 },
   panel: { width: 360, height: 200 }
 } as const;
 
@@ -125,5 +126,12 @@ export function createGrayboxTextures(scene: Phaser.Scene): void {
   graphics.fillStyle(0x24313d, 0.9);
   graphics.fillRoundedRect(0, 0, 360, 200, 16);
   graphics.generateTexture("panel", textureSpecs.panel.width, textureSpecs.panel.height);
+  graphics.clear();
+
+  // A 64x64 grid cell: faint top + left lines, so tiling makes an arena floor.
+  graphics.fillStyle(0x14253a, 1);
+  graphics.fillRect(0, 0, 64, 2);
+  graphics.fillRect(0, 0, 2, 64);
+  graphics.generateTexture("grid-cell", textureSpecs["grid-cell"].width, textureSpecs["grid-cell"].height);
   graphics.destroy();
 }

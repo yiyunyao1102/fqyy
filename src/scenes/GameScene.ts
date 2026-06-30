@@ -179,6 +179,12 @@ const finalBossPhaseConfigs = [
   }
 ] as const;
 
+// A bounded but generous arena (2000x1280, centred on the origin). Large enough
+// for the Yuanying boss's drifting safe zone, small enough that the grid floor
+// and glowing border give the play space a readable edge instead of void.
+const ARENA_HALF_WIDTH = 1000;
+const ARENA_HALF_HEIGHT = 640;
+
 export class GameScene extends Phaser.Scene {
   private player!: Player;
   private inputController!: InputController;
@@ -254,13 +260,22 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     this.activeRunSave = loadActiveRun(window.localStorage);
     this.restoreSavedRunState();
-    this.physics.world.setBounds(-2000, -2000, 4000, 4000);
+    const arenaWidth = ARENA_HALF_WIDTH * 2;
+    const arenaHeight = ARENA_HALF_HEIGHT * 2;
+    this.physics.world.setBounds(-ARENA_HALF_WIDTH, -ARENA_HALF_HEIGHT, arenaWidth, arenaHeight);
+    // Void beyond the arena, the arena floor, a tiling grid for spatial reference,
+    // then a glowing border so the play space reads as bounded ground.
+    this.add.rectangle(0, 0, 6000, 6000, 0x05090f, 1).setOrigin(0.5).setDepth(-30);
+    this.add.rectangle(0, 0, arenaWidth, arenaHeight, 0x0b1322, 1).setOrigin(0.5).setDepth(-22);
+    this.add.tileSprite(0, 0, arenaWidth, arenaHeight, "grid-cell").setOrigin(0.5).setDepth(-21);
     this.add
-      .rectangle(0, 0, 5000, 5000, 0x0c1520, 1)
+      .rectangle(0, 0, arenaWidth, arenaHeight)
       .setOrigin(0.5)
-      .setDepth(-10);
+      .setStrokeStyle(4, 0x2f5878, 0.85)
+      .setDepth(-20);
 
     this.player = new Player(this, 0, 0);
+    this.player.setCollideWorldBounds(true);
     const checkpoint = this.activeRunSave?.checkpoint;
     this.player.stats.health = checkpoint?.playerHealth ?? this.player.stats.health;
     this.player.stats.maxHealth = checkpoint?.playerMaxHealth ?? this.player.stats.maxHealth;
@@ -274,6 +289,7 @@ export class GameScene extends Phaser.Scene {
     ]).runtimeUpgradeIds.forEach((upgradeId) => this.replayCombatImprovement(upgradeId));
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
     this.cameras.main.setZoom(1);
+    this.cameras.main.setBounds(-ARENA_HALF_WIDTH, -ARENA_HALF_HEIGHT, ARENA_HALF_WIDTH * 2, ARENA_HALF_HEIGHT * 2);
 
     this.enemies = this.physics.add.group({ runChildUpdate: false });
     this.projectiles = this.physics.add.group({ runChildUpdate: false });
@@ -908,8 +924,17 @@ export class GameScene extends Phaser.Scene {
         // start) rather than tracking the player, so standing still falls
         // outside it and the player must chase the shrinking safe ground.
         const drift = this.runState.finalBossPhaseIndex % 2 === 0 ? 44 : -44;
-        this.finalBossSafeZoneX += drift;
-        this.finalBossSafeZoneY -= drift * 0.6;
+        // Keep the zone fully inside the arena so the clamped player can reach it.
+        this.finalBossSafeZoneX = Phaser.Math.Clamp(
+          this.finalBossSafeZoneX + drift,
+          -ARENA_HALF_WIDTH + this.finalBossSafeZoneRadius,
+          ARENA_HALF_WIDTH - this.finalBossSafeZoneRadius
+        );
+        this.finalBossSafeZoneY = Phaser.Math.Clamp(
+          this.finalBossSafeZoneY - drift * 0.6,
+          -ARENA_HALF_HEIGHT + this.finalBossSafeZoneRadius,
+          ARENA_HALF_HEIGHT - this.finalBossSafeZoneRadius
+        );
         const distance = Phaser.Math.Distance.Between(
           playerPosition.x,
           playerPosition.y,
