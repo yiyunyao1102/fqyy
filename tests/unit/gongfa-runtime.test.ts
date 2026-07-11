@@ -7,6 +7,9 @@ import {
   advanceTimedMasterySkill2Cooldown,
   applyGongfaMasteryChoice,
   applyGongfaImprovement,
+  advanceGongfaCollectionMastery,
+  createGongfaCollectionRuntime,
+  learnGongfa,
   createGongfaRuntime,
   createGongfaMasteryStateFromCheckpoint,
   createGongfaRuntimeFromCheckpoint,
@@ -29,6 +32,35 @@ import {
 import { getRank10Skill2Id } from "../../src/logic/mastery";
 
 describe("Gongfa runtime", () => {
+  it("advances every learned Gongfa on an independent Mastery track", () => {
+    const yujian = learnGongfa(createGongfaCollectionRuntime(), "yujian-jue", true);
+    const twoGongfa = learnGongfa(yujian, "jinfeng-gong");
+
+    const firstGain = advanceGongfaCollectionMastery(twoGongfa, {
+      points: 120,
+      finalBossActive: false
+    });
+    const secondGain = advanceGongfaCollectionMastery(firstGain.runtime, {
+      points: 80,
+      finalBossActive: false
+    });
+
+    expect(secondGain.runtime.byId["yujian-jue"]?.mastery).toMatchObject({
+      masteryPoints: 200,
+      masteryRank: 2,
+      masteryPendingRanks: [1, 2]
+    });
+    expect(secondGain.runtime.byId["jinfeng-gong"]?.mastery).toMatchObject({
+      masteryPoints: 200,
+      masteryRank: 2,
+      masteryPendingRanks: [1, 2]
+    });
+    expect(secondGain.rankUps.map(({ gongfaId }) => gongfaId)).toEqual([
+      "yujian-jue",
+      "jinfeng-gong"
+    ]);
+  });
+
   it("constructs and refines a complete Gongfa combat package through one interface", () => {
     const initial = createGongfaRuntime({
       gongfaId: "yujian-jue"

@@ -28,6 +28,7 @@ export interface GongfaCombatState extends GongfaStageState {
 export interface GongfaRuntime {
   gongfaId: GongfaId;
   combat: GongfaCombatState;
+  mastery: GongfaMasteryCheckpointFields;
   yujian?: YujianState;
   jinfeng?: JinfengState;
   gengjin?: GengjinState;
@@ -518,6 +519,76 @@ export interface GongfaMasteryCheckpointFields
   masterySkill2Casts: number;
 }
 
+export interface GongfaCollectionRuntime {
+  primaryGongfaId?: GongfaId;
+  byId: Partial<Record<GongfaId, GongfaRuntime>>;
+}
+
+export interface GongfaCollectionMasteryResult {
+  runtime: GongfaCollectionRuntime;
+  rankUps: Array<{
+    gongfaId: GongfaId;
+    previousRank: number;
+    targetRank: number;
+  }>;
+}
+
+function createEmptyGongfaMastery(): GongfaMasteryCheckpointFields {
+  return {
+    masteryPoints: 0,
+    masteryRank: 0,
+    masteryLearnedIds: [],
+    upgradeSelectionIds: [],
+    masterySkill2CooldownRemaining: 0,
+    masterySkill2Casts: 0,
+    masteryChoiceActive: false,
+    masteryPendingRanks: []
+  };
+}
+
+export function createGongfaCollectionRuntime(): GongfaCollectionRuntime {
+  return { byId: {} };
+}
+
+export function learnGongfa(
+  collection: GongfaCollectionRuntime,
+  gongfaId: GongfaId,
+  makePrimary = false
+): GongfaCollectionRuntime {
+  return {
+    primaryGongfaId:
+      makePrimary || !collection.primaryGongfaId ? gongfaId : collection.primaryGongfaId,
+    byId: {
+      ...collection.byId,
+      [gongfaId]: collection.byId[gongfaId] ?? createGongfaRuntime({ gongfaId })
+    }
+  };
+}
+
+export function advanceGongfaCollectionMastery(
+  collection: GongfaCollectionRuntime,
+  context: { points: number; finalBossActive: boolean }
+): GongfaCollectionMasteryResult {
+  const byId: Partial<Record<GongfaId, GongfaRuntime>> = { ...collection.byId };
+  const rankUps: GongfaCollectionMasteryResult["rankUps"] = [];
+
+  for (const [gongfaId, current] of Object.entries(collection.byId) as Array<
+    [GongfaId, GongfaRuntime]
+  >) {
+    const result = advanceGongfaMasteryProgress(current.mastery, {
+      gongfaId,
+      points: context.points,
+      finalBossActive: context.finalBossActive
+    });
+    byId[gongfaId] = { ...current, mastery: result.state as GongfaMasteryCheckpointFields };
+    if (result.rankUp) {
+      rankUps.push({ gongfaId, ...result.rankUp });
+    }
+  }
+
+  return { runtime: { ...collection, byId }, rankUps };
+}
+
 export function advanceTimedMasterySkill2Cooldown(
   skill2Id: string | undefined,
   cooldownRemainingMs: number,
@@ -691,6 +762,7 @@ function buildCrimsonFragmentSpec(runtime: GongfaRuntime): CrimsonFragmentSpec {
 
 interface CreateGongfaRuntimeInput {
   gongfaId: GongfaId;
+  mastery?: Partial<GongfaMasteryCheckpointFields>;
   yujian?: Partial<YujianState>;
   jinfeng?: Partial<JinfengState>;
   gengjin?: Partial<GengjinState>;
@@ -1020,6 +1092,13 @@ export function createGongfaRuntime(input: CreateGongfaRuntimeInput): GongfaRunt
 
   const runtime: GongfaRuntime = {
     gongfaId: input.gongfaId,
+    mastery: {
+      ...createEmptyGongfaMastery(),
+      ...input.mastery,
+      masteryLearnedIds: [...(input.mastery?.masteryLearnedIds ?? [])],
+      upgradeSelectionIds: [...(input.mastery?.upgradeSelectionIds ?? [])],
+      masteryPendingRanks: [...(input.mastery?.masteryPendingRanks ?? [])]
+    },
     combat: {
       ...stageState,
       pattern: gongfa.pattern,
