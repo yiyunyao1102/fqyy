@@ -9,6 +9,7 @@ import {
   type GongfaStageState
 } from "../data/gongfa";
 import {
+  getGongfaMasteryEfficiency,
   getGongfaMasterySpeedLabel,
   getLinggenAffinityGradeSummary,
   linggenConfigs,
@@ -2888,7 +2889,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     const result = advanceGongfaCollectionMastery(this.gongfaCollection, {
-      points,
+      points: (gongfaId) =>
+        points * getGongfaMasteryEfficiency(this.runState.hiddenLinggen.id, gongfaId),
       finalBossActive: this.runState.finalBossActive
     });
     this.gongfaCollection = result.runtime;

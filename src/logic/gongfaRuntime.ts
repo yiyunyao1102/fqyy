@@ -17,7 +17,7 @@ import {
   SURGE_UPDRAFT_IDS
 } from "../data/surgeGongfa";
 import { upgradeConfigs, type UpgradeEffect } from "../data/upgrades";
-import { getRank10Skill2Id } from "./mastery";
+import { getRank10Skill2Id, hasAvailableGongfaRefinement } from "./mastery";
 
 export interface GongfaCombatState extends GongfaStageState {
   pattern: GongfaPattern;
@@ -589,7 +589,10 @@ export function replaceGongfaCollection(
 
 export function advanceGongfaCollectionMastery(
   collection: GongfaCollectionRuntime,
-  context: { points: number; finalBossActive: boolean }
+  context: {
+    points: number | ((gongfaId: GongfaId) => number);
+    finalBossActive: boolean;
+  }
 ): GongfaCollectionMasteryResult {
   const byId: Partial<Record<GongfaId, GongfaRuntime>> = { ...collection.byId };
   const rankUps: GongfaCollectionMasteryResult["rankUps"] = [];
@@ -599,8 +602,9 @@ export function advanceGongfaCollectionMastery(
   >) {
     const result = advanceGongfaMasteryProgress(current.mastery, {
       gongfaId,
-      points: context.points,
-      finalBossActive: context.finalBossActive
+      points: typeof context.points === "function" ? context.points(gongfaId) : context.points,
+      finalBossActive: context.finalBossActive,
+      learnedIds: current.mastery.masteryLearnedIds
     });
     byId[gongfaId] = { ...current, mastery: result.state as GongfaMasteryCheckpointFields };
     if (result.rankUp) {
@@ -641,8 +645,31 @@ export function projectGongfaCollectionCheckpoint(
 ): GongfaCollectionCheckpoint {
   return {
     primaryGongfaId: collection.primaryGongfaId,
-    runtimes: (Object.values(collection.byId) as GongfaRuntime[]).map(copyRuntime)
+    runtimes: (Object.values(collection.byId) as GongfaRuntime[]).map((runtime) => {
+      const checkpoint = copyRuntime(runtime);
+      checkpoint.attackCooldownRemaining = 0;
+      checkpoint.mastery.masterySkill2CooldownRemaining = 0;
+      resetTransientRuntimeTimers(checkpoint);
+      return checkpoint;
+    })
   };
+}
+
+function resetTransientRuntimeTimers(runtime: GongfaRuntime): void {
+  if (runtime.yujian) runtime.yujian.intentDurationRemaining = 0;
+  if (runtime.jinfeng) runtime.jinfeng.walkingStormCooldownRemaining = 0;
+  if (runtime.gengjin) {
+    runtime.gengjin.bladeShellCooldownRemaining = 0;
+    runtime.gengjin.gengjinPulseCooldownRemaining = 0;
+  }
+  if (runtime.burningRing) {
+    runtime.burningRing.counterflowRingCooldownRemaining = 0;
+    runtime.burningRing.solarFlareCooldownRemaining = 0;
+    runtime.burningRing.sunspotCooldownRemaining = 0;
+  }
+  if (runtime.crimsonFurnace) runtime.crimsonFurnace.furnaceCascadeCooldownRemaining = 0;
+  if (runtime.blazingFeather) runtime.blazingFeather.emberDurationRemaining = 0;
+  if (runtime.surge) runtime.surge.durationRemaining = 0;
 }
 
 export function createGongfaCollectionFromCheckpoint(
@@ -698,9 +725,15 @@ export function advanceGongfaMasteryProgress(
     gongfaId: GongfaId;
     points: number;
     finalBossActive: boolean;
+    learnedIds?: string[];
   }
 ): GongfaMasteryProgressResult {
-  if (context.points <= 0) {
+  if (
+    context.points <= 0 ||
+    (state.masteryRank >= 10 &&
+      state.masteryPendingRanks.length === 0 &&
+      !hasAvailableGongfaRefinement(context.gongfaId, context.learnedIds ?? []))
+  ) {
     return { state };
   }
 
