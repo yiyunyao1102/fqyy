@@ -543,6 +543,11 @@ export interface GongfaCollectionMasteryCheckpoint {
   masteries: GongfaMasteryCheckpoint[];
 }
 
+export interface GongfaCollectionCheckpoint {
+  primaryGongfaId?: GongfaId;
+  runtimes: GongfaRuntime[];
+}
+
 function createEmptyGongfaMastery(): GongfaMasteryCheckpointFields {
   return {
     masteryPoints: 0,
@@ -628,6 +633,26 @@ export function createGongfaCollectionRuntimeFromCheckpoint(
     collection.byId[gongfaId] = createGongfaRuntime({ gongfaId, mastery });
   }
   return collection;
+}
+
+export function projectGongfaCollectionCheckpoint(
+  collection: GongfaCollectionRuntime
+): GongfaCollectionCheckpoint {
+  return {
+    primaryGongfaId: collection.primaryGongfaId,
+    runtimes: (Object.values(collection.byId) as GongfaRuntime[]).map(copyRuntime)
+  };
+}
+
+export function createGongfaCollectionFromCheckpoint(
+  checkpoint: GongfaCollectionCheckpoint
+): GongfaCollectionRuntime {
+  return {
+    primaryGongfaId: checkpoint.primaryGongfaId,
+    byId: Object.fromEntries(
+      checkpoint.runtimes.map((runtime) => [runtime.gongfaId, copyRuntime(runtime)])
+    )
+  };
 }
 
 export function advanceTimedMasterySkill2Cooldown(
@@ -1027,6 +1052,7 @@ function copyRuntime(runtime: GongfaRuntime): GongfaRuntime {
   return {
     ...runtime,
     combat: { ...runtime.combat },
+    mastery: createGongfaMasteryStateFromCheckpoint(runtime.mastery),
     yujian: runtime.yujian
       ? {
           ...runtime.yujian,

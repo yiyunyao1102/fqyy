@@ -10,6 +10,7 @@ import {
   advanceGongfaCollectionMastery,
   createGongfaCollectionRuntime,
   createGongfaCollectionRuntimeFromCheckpoint,
+  createGongfaCollectionFromCheckpoint,
   learnGongfa,
   createGongfaRuntime,
   createGongfaMasteryStateFromCheckpoint,
@@ -25,6 +26,7 @@ import {
   planGongfaAttack,
   projectGongfaMasteryCheckpoint,
   projectGongfaCollectionMasteryCheckpoint,
+  projectGongfaCollectionCheckpoint,
   projectGongfaRuntimeCheckpoint,
   projectGongfaRuntimeView,
   recordMasterySkill2Cast,
@@ -88,6 +90,24 @@ describe("Gongfa runtime", () => {
         })
       ]
     });
+  });
+
+  it("checkpoints every learned Gongfa combat and passive state", () => {
+    let collection = learnGongfa(createGongfaCollectionRuntime(), "jinfeng-gong", true);
+    collection = learnGongfa(collection, "burning-ring-scripture");
+    collection.byId["jinfeng-gong"]!.jinfeng!.momentum = 4;
+    collection.byId["jinfeng-gong"]!.combat.range = 188;
+    collection.byId["burning-ring-scripture"]!.burningRing!.heat = 72;
+
+    const checkpoint = projectGongfaCollectionCheckpoint(collection);
+    const restored = createGongfaCollectionFromCheckpoint(checkpoint);
+
+    expect(restored.byId["jinfeng-gong"]!.jinfeng!.momentum).toBe(4);
+    expect(restored.byId["jinfeng-gong"]!.combat.range).toBe(188);
+    expect(restored.byId["burning-ring-scripture"]!.burningRing!.heat).toBe(72);
+
+    restored.byId["jinfeng-gong"]!.jinfeng!.momentum = 1;
+    expect(checkpoint.runtimes[0].jinfeng!.momentum).toBe(4);
   });
 
   it("constructs and refines a complete Gongfa combat package through one interface", () => {
