@@ -114,6 +114,25 @@ function isFinalBossPhaseIndex(value: unknown): value is number {
   return isNumber(value) && Number.isInteger(value) && value >= 0 && value <= 2;
 }
 
+function isPendingJourneyDecision(value: unknown): boolean {
+  if (value === undefined) {
+    return true;
+  }
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (value.kind === "phase-transition") {
+    return isOneOf(value.nextPhase, ["zhongqi", "houqi", "dayuanman"] as const);
+  }
+  if (value.kind === "tribulation") {
+    return isOneOf(value.stage, stageOrder);
+  }
+  if (value.kind === "yuanying-tribulation") {
+    return true;
+  }
+  return value.kind === "final-boss-phase" && isFinalBossPhaseIndex(value.nextPhaseIndex);
+}
+
 function isPercent(value: unknown): value is number {
   return isNumber(value) && value >= 0 && value <= 100;
 }
@@ -272,6 +291,10 @@ function isActiveRunCheckpoint(value: unknown): value is ActiveRunCheckpoint {
   }
 
   if (value.finalBossPhaseIndex !== undefined && !isFinalBossPhaseIndex(value.finalBossPhaseIndex)) {
+    return false;
+  }
+
+  if (!isPendingJourneyDecision(value.pendingDecision)) {
     return false;
   }
 
