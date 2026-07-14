@@ -5,6 +5,7 @@ import { DebugOverlay } from "../ui/DebugOverlay";
 import { LevelUpPanel } from "../ui/LevelUpPanel";
 import { buildHudLines } from "../logic/hudPresentation";
 import type { UiSnapshot } from "../types/gameTest";
+import { HudPresentation } from "../ui/HudPresentation";
 
 interface HudState {
   health: number;
@@ -47,11 +48,11 @@ interface HudState {
 }
 
 export class UIScene extends Phaser.Scene {
-  private hudBars!: Phaser.GameObjects.Graphics;
   private hudText!: Phaser.GameObjects.Text;
+  private hudPresentation!: HudPresentation;
   private messageText!: Phaser.GameObjects.Text;
   private pauseText!: Phaser.GameObjects.Text;
-  private debugOverlay!: DebugOverlay;
+  private debugOverlay?: DebugOverlay;
   private levelUpPanel!: LevelUpPanel;
   private inputController!: InputController;
   private levelUpVisible = false;
@@ -62,7 +63,7 @@ export class UIScene extends Phaser.Scene {
 
   create(): void {
     this.inputController = new InputController(this);
-    this.hudBars = this.add.graphics().setScrollFactor(0).setDepth(219);
+    this.hudPresentation = new HudPresentation(this);
     this.hudText = this.add
       .text(18, 44, "", {
         fontFamily: "Trebuchet MS, Noto Sans SC, sans-serif",
@@ -71,7 +72,8 @@ export class UIScene extends Phaser.Scene {
         lineSpacing: 6
       })
       .setScrollFactor(0)
-      .setDepth(220);
+      .setDepth(220)
+      .setVisible(false);
 
     this.messageText = this.add
       .text(this.scale.width * 0.5, this.scale.height - 28, "", {
@@ -85,16 +87,18 @@ export class UIScene extends Phaser.Scene {
       .setDepth(220);
 
     this.pauseText = this.add
-      .text(this.scale.width * 0.5, 34, "", {
+      .text(this.scale.width * 0.5, 28, "", {
         fontFamily: "Trebuchet MS, Noto Sans SC, sans-serif",
-        fontSize: "18px",
+        fontSize: "15px",
         color: "#8ecae6"
       })
       .setOrigin(0.5, 0)
       .setScrollFactor(0)
       .setDepth(220);
 
-    this.debugOverlay = new DebugOverlay(this);
+    if (import.meta.env.DEV) {
+      this.debugOverlay = new DebugOverlay(this);
+    }
     this.levelUpPanel = new LevelUpPanel(this);
 
     this.events.on("show-choice-panel", this.onShowChoicePanel, this);
@@ -103,8 +107,8 @@ export class UIScene extends Phaser.Scene {
   }
 
   update(): void {
-    if (this.inputController.debugPressed) {
-      this.debugOverlay.toggle();
+    if (import.meta.env.DEV && this.inputController.debugPressed) {
+      this.debugOverlay?.toggle();
     }
 
     if (this.levelUpVisible) {
@@ -119,10 +123,7 @@ export class UIScene extends Phaser.Scene {
       return;
     }
 
-    this.drawVitalityBar(hud);
-
-    this.hudText.setText(
-      buildHudLines({
+    const hudLines = buildHudLines({
         stageName: hud.stageName,
         realmPhase: hud.realmPhase,
         realmProgress: hud.realmProgress,
@@ -152,8 +153,9 @@ export class UIScene extends Phaser.Scene {
         kills: hud.kills,
         lingcaoCollected: hud.lingcaoCollected,
         spiritTreasures: hud.spiritTreasures
-      })
-    );
+      });
+    this.hudText.setText(hudLines);
+    this.hudPresentation.update(hudLines, hud);
 
     this.messageText.setText(hud.message ?? "");
     this.pauseText.setText(
@@ -161,24 +163,31 @@ export class UIScene extends Phaser.Scene {
         ? "Run Ended"
         : hud.paused
           ? "Paused - ESC to resume"
-        : "WASD move | SPACE evade | ESC pause | F3 debug | 1/2/3 or click to choose"
+        : import.meta.env.DEV
+          ? "WASD Move · Space Evade · Esc Pause · F3 Debug"
+          : "WASD Move · Space Evade · Esc Pause"
     );
 
-    this.debugOverlay.render([
-      `elapsed_ms=${Math.round(hud.elapsedMs)}`,
-      `enemy_count=${hud.enemyCount}`,
-      `orb_count=${hud.orbCount}`,
-      `enemy_kinds=${hud.enemyKinds}`,
-      `paused=${hud.paused}`,
-      `game_over=${hud.gameOver}`
-    ]);
+    if (import.meta.env.DEV) {
+      this.debugOverlay?.render([
+        `elapsed_ms=${Math.round(hud.elapsedMs)}`,
+        `enemy_count=${hud.enemyCount}`,
+        `orb_count=${hud.orbCount}`,
+        `enemy_kinds=${hud.enemyKinds}`,
+        `paused=${hud.paused}`,
+        `game_over=${hud.gameOver}`
+      ]);
+    }
   }
 
   getTestSnapshot(): UiSnapshot {
     const hud = this.registry.get("hud") as HudState | undefined;
     return {
       masteryProgress: hud?.masteryProgress,
-      hudText: this.hudText?.text ?? ""
+      hudText: this.hudText?.text ?? "",
+      visualTheme: "ink-jade",
+      hudRegions: [...this.hudPresentation.regionNames],
+      choicePanel: this.levelUpPanel.getSnapshot()
     };
   }
 
@@ -194,24 +203,9 @@ export class UIScene extends Phaser.Scene {
     this.levelUpPanel.hide();
   }
 
-  private drawVitalityBar(hud: HudState): void {
-    const x = 18;
-    const y = 16;
-    const w = 200;
-    const h = 18;
-    const ratio = hud.maxHealth > 0 ? Math.max(0, Math.min(1, hud.health / hud.maxHealth)) : 0;
-    const color = ratio > 0.5 ? 0x6bd06b : ratio > 0.25 ? 0xe0c060 : 0xe06b6b;
-    this.hudBars.clear();
-    this.hudBars.fillStyle(0x1a2230, 0.85);
-    this.hudBars.fillRoundedRect(x - 3, y - 3, w + 6, h + 6, 5);
-    this.hudBars.fillStyle(0x0c1118, 1);
-    this.hudBars.fillRect(x, y, w, h);
-    this.hudBars.fillStyle(color, 1);
-    this.hudBars.fillRect(x, y, w * ratio, h);
-  }
-
   private onResize(gameSize: Phaser.Structs.Size): void {
-    this.pauseText.setPosition(gameSize.width * 0.5, 34);
+    this.hudPresentation.resize();
+    this.pauseText.setPosition(gameSize.width * 0.5, 28);
     this.messageText.setPosition(gameSize.width * 0.5, gameSize.height - 28);
   }
 }

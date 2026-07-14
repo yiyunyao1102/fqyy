@@ -19,8 +19,12 @@ export class LevelUpPanel {
       .setOrigin(0)
       .setInteractive();
 
-    const panel = scene.add.image(scene.scale.width * 0.5, scene.scale.height * 0.5, "panel");
-    panel.setDisplaySize(780, 360);
+    const panel = scene.add
+      .rectangle(scene.scale.width * 0.5, scene.scale.height * 0.5, 780, 360, 0x07111d, 0.97)
+      .setStrokeStyle(3, 0x72ced7, 0.72);
+    const panelInset = scene.add
+      .rectangle(scene.scale.width * 0.5, scene.scale.height * 0.5, 756, 336)
+      .setStrokeStyle(1, 0xd7b96d, 0.38);
 
     this.title = scene.add
       .text(scene.scale.width * 0.5, scene.scale.height * 0.5 - 144, "Breakthrough Choice", {
@@ -40,15 +44,21 @@ export class LevelUpPanel {
       })
       .setOrigin(0.5);
 
-    this.container = scene.add.container(0, 0, [backdrop, panel, this.title, this.subtitle]);
+    this.container = scene.add.container(0, 0, [
+      backdrop,
+      panel,
+      panelInset,
+      this.title,
+      this.subtitle
+    ]);
     this.container.setDepth(500).setVisible(false);
 
-    for (let i = 0; i < 3; i += 1) {
-      const x = scene.scale.width * 0.5 - 235 + i * 235;
+    for (let i = 0; i < 4; i += 1) {
+      const x = scene.scale.width * 0.5 - 270 + i * 180;
       const y = scene.scale.height * 0.5 + 12;
       const box = scene.add
-        .rectangle(x, y, 200, 180, 0x102131, 0.95)
-        .setStrokeStyle(2, 0x5fe0ff)
+        .rectangle(x, y, 166, 180, 0x0d1d2b, 0.96)
+        .setStrokeStyle(2, 0x6fcbd5, 0.7)
         .setInteractive({ useHandCursor: true });
       const label = scene.add
         .text(x, y - 52, "", {
@@ -56,7 +66,7 @@ export class LevelUpPanel {
           fontSize: "20px",
           color: "#f5fbff",
           align: "center",
-          wordWrap: { width: 170 }
+          wordWrap: { width: 146 }
         })
         .setOrigin(0.5);
       const desc = scene.add
@@ -65,7 +75,7 @@ export class LevelUpPanel {
           fontSize: "15px",
           color: "#a9c8da",
           align: "center",
-          wordWrap: { width: 170 }
+          wordWrap: { width: 146 }
         })
         .setOrigin(0.5);
 
@@ -74,6 +84,12 @@ export class LevelUpPanel {
         if (option && this.chooseHandler) {
           this.chooseHandler(option);
         }
+      });
+      box.on("pointerover", () => {
+        box.setFillStyle(0x163246, 0.98).setStrokeStyle(3, 0xd7b96d, 0.9);
+      });
+      box.on("pointerout", () => {
+        box.setFillStyle(0x0d1d2b, 0.96).setStrokeStyle(2, 0x6fcbd5, 0.7);
       });
 
       this.container.add([box, label, desc]);
@@ -93,8 +109,15 @@ export class LevelUpPanel {
     this.subtitle.setText(subtitle ?? "");
     this.container.setVisible(true);
 
+    const spacing = options.length === 4 ? 180 : 220;
+    const startX = this.title.x - ((options.length - 1) * spacing) / 2;
+
     options.forEach((option, index) => {
       const slot = this.options[index];
+      const x = startX + index * spacing;
+      slot.box.setX(x);
+      slot.label.setX(x);
+      slot.desc.setX(x);
       slot.label.setText(`${index + 1}. ${option.title}`);
       slot.desc.setText(option.description);
       slot.box.setVisible(true);
@@ -121,5 +144,12 @@ export class LevelUpPanel {
     if (option && this.chooseHandler) {
       this.chooseHandler(option);
     }
+  }
+
+  getSnapshot(): { visible: boolean; renderedOptionCount: number } {
+    return {
+      visible: this.container.visible,
+      renderedOptionCount: this.options.filter((option) => option.box.visible).length
+    };
   }
 }

@@ -34,3 +34,15 @@ These captures were produced from the same running Chromium game and public test
 | Aura-blade impact | [`impact-aura-blade.png`](impact-aura-blade.png) |
 
 `tests/e2e/combat-visuals.spec.ts` provides deterministic browser proof for all seven enemy texture/animation mappings, hit and defeat state transitions, all four projectile travel families, all four matching impact families, and decoded alpha padding for every frame in all four combat atlases. Source prompts and untouched generations remain beside the normalized exports under `assets/sprites/enemies/raw_ai/` and `assets/sprites/projectiles/raw_ai/`.
+
+## Remaining visual pass review
+
+These full-game captures cover the final pickup, arena, and HUD graybox replacements described in [`REMAINING_VISUAL_SPEC.md`](../REMAINING_VISUAL_SPEC.md). The low-Vitality image is intentionally cropped to the status region so its cinnabar hierarchy can be inspected at native scale.
+
+| State | Browser evidence |
+| --- | --- |
+| Painted arena, three-region HUD, Qi Orb, Healing Pill, and all six Spirit Treasure colors | [`world-pickups-hud.png`](world-pickups-hud.png) |
+| Low-Vitality status treatment | [`hud-low-vitality.png`](hud-low-vitality.png) |
+| Four-option Spirit Treasure replacement choice | [`choice-panel.png`](choice-panel.png) |
+
+`tests/e2e/remaining-visuals.spec.ts` checks the production texture and animation mappings, all six stable Treasure tints, collection burst, arena landmarks, HUD regions, four-option choice rendering, per-frame pickup padding, and exact arena-edge continuity. The browser harness only creates deterministic gameplay states; every captured object and panel uses its production rendering path.

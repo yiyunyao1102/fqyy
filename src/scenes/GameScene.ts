@@ -110,6 +110,13 @@ import {
   COMBAT_TEXTURES,
   projectileVisualDefinitions
 } from "../visual/combatVisuals";
+import {
+  PICKUP_ANIMATIONS,
+  SPIRIT_TREASURE_COLLECTION_TINT,
+  SPIRIT_TREASURE_TINTS,
+  WORLD_TEXTURES
+} from "../visual/worldVisuals";
+import { createArenaPresentation } from "../visual/arenaVisuals";
 
 interface CombatState extends GongfaStageState {
   pattern: GongfaPattern | "baseline";
@@ -186,6 +193,8 @@ const ARENA_HALF_WIDTH = 1000;
 const ARENA_HALF_HEIGHT = 640;
 
 export class GameScene extends Phaser.Scene {
+  private arenaFloor!: Phaser.GameObjects.TileSprite;
+  private arenaDecorationCount = 0;
   private player!: Player;
   private inputController!: InputController;
   private enemies!: Phaser.Physics.Arcade.Group;
@@ -235,6 +244,7 @@ export class GameScene extends Phaser.Scene {
   private nextSkill2ActivationId = 1;
   private readonly skill2HitTargets = new Map<number, Set<number>>();
   private readonly activeProjectileImpacts = new Set<Phaser.GameObjects.Sprite>();
+  private readonly activePickupEffects = new Set<Phaser.GameObjects.Sprite>();
   private runState: RunState = {
     kills: 0,
     elapsedMs: 0,
@@ -300,16 +310,9 @@ export class GameScene extends Phaser.Scene {
     const arenaWidth = ARENA_HALF_WIDTH * 2;
     const arenaHeight = ARENA_HALF_HEIGHT * 2;
     this.physics.world.setBounds(-ARENA_HALF_WIDTH, -ARENA_HALF_HEIGHT, arenaWidth, arenaHeight);
-    // Void beyond the arena, the arena floor, a tiling grid for spatial reference,
-    // then a glowing border so the play space reads as bounded ground.
-    this.add.rectangle(0, 0, 6000, 6000, 0x05090f, 1).setOrigin(0.5).setDepth(-30);
-    this.add.rectangle(0, 0, arenaWidth, arenaHeight, 0x0b1322, 1).setOrigin(0.5).setDepth(-22);
-    this.add.tileSprite(0, 0, arenaWidth, arenaHeight, "grid-cell").setOrigin(0.5).setDepth(-21);
-    this.add
-      .rectangle(0, 0, arenaWidth, arenaHeight)
-      .setOrigin(0.5)
-      .setStrokeStyle(4, 0x2f5878, 0.85)
-      .setDepth(-20);
+    const arena = createArenaPresentation(this, arenaWidth, arenaHeight);
+    this.arenaFloor = arena.floor;
+    this.arenaDecorationCount = arena.decorationCount;
 
     this.player = new Player(this, 0, 0);
     this.player.setCollideWorldBounds(true);
@@ -705,7 +708,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private collectOrb(orb: QiOrb): void {
-    this.spawnPickupPop(orb.x, orb.y);
+    this.spawnPickupBurst(orb.x, orb.y, 0x8feaff, 58);
     this.sfx.pickup();
     this.grantQi(orb.qiValue);
     orb.destroy();
@@ -784,15 +787,17 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private spawnPickupPop(x: number, y: number): void {
-    const pop = this.add.circle(x, y, 5, 0x9be7ff, 0.85).setDepth(7);
-    this.tweens.add({
-      targets: pop,
-      scale: 2.2,
-      alpha: 0,
-      duration: 200,
-      ease: "Quad.out",
-      onComplete: () => pop.destroy()
+  private spawnPickupBurst(x: number, y: number, tint: number, size: number): void {
+    const effect = this.add
+      .sprite(x, y, WORLD_TEXTURES.pickups, 12)
+      .setDisplaySize(size, size)
+      .setDepth(12)
+      .setTint(tint)
+      .play(PICKUP_ANIMATIONS.collect);
+    this.activePickupEffects.add(effect);
+    effect.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+      this.activePickupEffects.delete(effect);
+      effect.destroy();
     });
   }
 
@@ -858,6 +863,12 @@ export class GameScene extends Phaser.Scene {
       this.runState.spiritTreasureIds = result.activeIds;
       this.applySpiritTreasureEffects();
       this.lastMessage = `${getSpiritTreasureConfig(treasure.treasureId).name} attunes to you.`;
+      this.spawnPickupBurst(
+        treasure.x,
+        treasure.y,
+        SPIRIT_TREASURE_COLLECTION_TINT,
+        76
+      );
       treasure.destroy();
       this.persistRunCheckpoint();
       this.publishHud(this.lastMessage);
@@ -907,6 +918,12 @@ export class GameScene extends Phaser.Scene {
     );
     this.applySpiritTreasureEffects();
     this.lastMessage = `${getSpiritTreasureConfig(treasure.treasureId).name} supplants ${getSpiritTreasureConfig(replacedId).name}.`;
+    this.spawnPickupBurst(
+      treasure.x,
+      treasure.y,
+      SPIRIT_TREASURE_COLLECTION_TINT,
+      76
+    );
     treasure.destroy();
     this.pendingSpiritTreasure = undefined;
     this.persistRunCheckpoint();
@@ -1032,6 +1049,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.player.heal(pill.healAmount);
+    this.spawnPickupBurst(pill.x, pill.y, 0xff9dc9, 68);
     pill.destroy();
     this.lastMessage = "Healing Pill restores your vitality.";
     this.persistRunCheckpoint();
@@ -3183,7 +3201,29 @@ export class GameScene extends Phaser.Scene {
         projectileImpacts: [...this.activeProjectileImpacts]
           .filter((impact) => impact.active)
           .map((impact) => impact.anims.currentAnim?.key ?? "")
-          .filter(Boolean)
+          .filter(Boolean),
+        pickups: {
+          qiOrbs: ((this.orbs?.getChildren() as QiOrb[] | undefined) ?? []).map((orb) =>
+            orb.getVisualSnapshot()
+          ),
+          healingPills: ((this.healingPills?.getChildren() as HealingPill[] | undefined) ?? []).map(
+            (pill) => pill.getVisualSnapshot()
+          ),
+          spiritTreasures: (
+            (this.spiritTreasures?.getChildren() as SpiritTreasure[] | undefined) ?? []
+          ).map((treasure) => treasure.getVisualSnapshot()),
+          collectionEffects: [...this.activePickupEffects]
+            .filter((effect) => effect.active)
+            .map((effect) => effect.anims.currentAnim?.key ?? "")
+            .filter(Boolean),
+          collectionEffectTints: [...this.activePickupEffects]
+            .filter((effect) => effect.active)
+            .map((effect) => effect.tintTopLeft)
+        },
+        arena: {
+          floorTextureKey: this.arenaFloor?.texture.key ?? "",
+          decorationCount: this.arenaDecorationCount
+        }
       },
       progression: {
         stage: this.runState.stage,
@@ -3379,6 +3419,25 @@ export class GameScene extends Phaser.Scene {
 
   forceSpawnHealingPill(healAmount = 30, offsetX = 0, offsetY = 0): void {
     this.spawnHealingPill(this.player.x + offsetX, this.player.y + offsetY, healAmount);
+    this.publishHud(this.lastMessage);
+  }
+
+  forceSpawnPickupShowcase(): void {
+    this.spawnOrb(this.player.x - 108, this.player.y - 48, 1);
+    this.spawnHealingPill(this.player.x - 72, this.player.y + 62, 30);
+
+    (Object.keys(SPIRIT_TREASURE_TINTS) as SpiritTreasureId[]).forEach(
+      (treasureId, index) => {
+        const column = index % 3;
+        const row = Math.floor(index / 3);
+        this.spawnSpiritTreasure(
+          treasureId,
+          this.player.x + 48 + column * 66,
+          this.player.y - 58 + row * 112
+        );
+      }
+    );
+
     this.publishHud(this.lastMessage);
   }
 

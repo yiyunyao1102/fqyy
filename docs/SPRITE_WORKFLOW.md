@@ -31,8 +31,10 @@ This project starts as a graybox MVP. Real art should be added only after the co
 
 ## Graybox Transition Checklist
 
-- Replace primitive player shape with the complete protagonist locomotion/action/VFX atlases in `docs/PLAYER_VISUAL_SPEC.md`.
+- [x] Replace primitive player shape with the complete protagonist locomotion/action/VFX atlases in `docs/PLAYER_VISUAL_SPEC.md`.
 - [x] Replace all seven enemy primitives with readable pursue, hit, and defeat presentation.
 - [x] Replace projectile primitives with four animated travel families and matching hit VFX.
-- Replace XP orb circle with a qi orb pickup animation.
-- Keep collision boxes independent from final art dimensions.
+- [x] Replace the Qi Orb, Healing Pill, and Spirit Treasure primitives with animated production pickups and collection VFX.
+- [x] Replace the arena graybox with a quiet painted floor, cultivation landmarks, and readable bounds.
+- [x] Replace the single-block HUD with status, Gongfa, and Evade scan regions plus matching choice framing.
+- [x] Keep collision boxes independent from final art dimensions.

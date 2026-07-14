@@ -4,6 +4,7 @@ import type { PlayerVisualSnapshot } from "../entities/Player";
 import type { EnemyVisualSnapshot } from "../entities/Enemy";
 import type { ProjectileVisualSnapshot } from "../entities/Projectile";
 import type { EnemyId } from "../data/enemies";
+import type { SpiritTreasureId } from "../data/spiritTreasures";
 
 export interface GameSnapshot {
   sceneName: string;
@@ -25,6 +26,22 @@ export interface GameSnapshot {
     enemies: EnemyVisualSnapshot[];
     projectiles: ProjectileVisualSnapshot[];
     projectileImpacts: string[];
+    pickups: {
+      qiOrbs: Array<{ textureKey: string; animationKey: string }>;
+      healingPills: Array<{ textureKey: string; animationKey: string }>;
+      spiritTreasures: Array<{
+        treasureId: SpiritTreasureId;
+        textureKey: string;
+        animationKey: string;
+        tint: number;
+      }>;
+      collectionEffects: string[];
+      collectionEffectTints: number[];
+    };
+    arena: {
+      floorTextureKey: string;
+      decorationCount: number;
+    };
   };
   progression: {
     stage: string;
@@ -102,6 +119,12 @@ export interface GameSnapshot {
 export interface UiSnapshot {
   masteryProgress?: number;
   hudText: string;
+  visualTheme: string;
+  hudRegions: string[];
+  choicePanel: {
+    visible: boolean;
+    renderedOptionCount: number;
+  };
 }
 
 export interface GameTestHarness {
@@ -117,5 +140,6 @@ export interface GameTestHarness {
   forceSpawnSpiritTreasure(treasureId: string): void;
   forceClaimLingcao(): void;
   forceSpawnHealingPill(healAmount?: number): void;
+  forceSpawnPickupShowcase(): void;
   forceAdvanceSpawnClock(deltaMs: number): void;
 }

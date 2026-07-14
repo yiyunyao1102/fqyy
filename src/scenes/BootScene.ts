@@ -8,6 +8,10 @@ import {
   createCombatAnimations,
   preloadCombatVisuals
 } from "../visual/combatVisuals";
+import {
+  createWorldAnimations,
+  preloadWorldVisuals
+} from "../visual/worldVisuals";
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -17,12 +21,14 @@ export class BootScene extends Phaser.Scene {
   preload(): void {
     preloadCultivatorVisuals(this);
     preloadCombatVisuals(this);
+    preloadWorldVisuals(this);
   }
 
   create(): void {
     createGrayboxTextures(this);
     createCultivatorAnimations(this);
     createCombatAnimations(this);
+    createWorldAnimations(this);
     this.scene.start("game");
     this.scene.start("ui");
   }
