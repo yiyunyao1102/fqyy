@@ -34,6 +34,9 @@ test("Chinese is the default and one persisted language selector controls game a
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "功法总览" })).toBeVisible();
+  await page.getByRole("button", { name: "流派规划" }).click();
+  expect(await page.evaluate(() => new URLSearchParams(location.hash.split("?")[1]).get("n")))
+    .toBe("Untitled Cultivation");
   await page.getByRole("button", { name: "打开设置" }).click();
   await expect(page.getByRole("combobox", { name: "语言" })).toHaveValue("zh-CN");
 });
@@ -54,6 +57,8 @@ test("a Chinese run localizes awakening choices, HUD progression, and the Gongfa
   await page.getByRole("button", { name: "开启新征途" }).click();
   await page.getByRole("group", { name: "选择修士候选" }).getByRole("button").first().click();
   await page.waitForFunction(() => Boolean(window.__gameTest));
+  expect(await page.evaluate(() => window.__gameTest!.getSnapshot().visuals.lingcao.markerTitle))
+    .toBe("灵草");
   await page.evaluate(() => window.__gameTest!.forceClaimLingcao());
   await page.waitForFunction(() => window.__gameTest!.getSnapshot().progression.lingcaoCollected);
 
@@ -73,5 +78,6 @@ test("a Chinese run localizes awakening choices, HUD progression, and the Gongfa
   await expect.poll(() => page.evaluate(() => window.__gameTest!.getUiSnapshot().gongfaCodex.visible)).toBe(true);
   const ui = await page.evaluate(() => window.__gameTest!.getUiSnapshot());
   expect(ui.hudText).toContain("功法：");
+  expect(ui.gongfaCodex.rankText).toBe("精通第 0 重");
   expect(ui.gongfaCodex.cardNames).toEqual(["飞剑齐射", "不灭剑意", "回锋剑阵"]);
 });

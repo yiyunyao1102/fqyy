@@ -53,6 +53,7 @@ export interface GameSnapshot {
       textureKey: string;
       animationKey: string;
       state: LingcaoVisualState;
+      markerTitle: string;
       collisionCenterOffsetX: number;
       collisionCenterOffsetY: number;
       collectionEffects: string[];

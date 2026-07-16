@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { LINGCAO_ANIMATIONS, WORLD_TEXTURES } from "../visual/worldVisuals";
+import { getLocale } from "../i18n/runtime";
 
 export type LingcaoVisualState = "idle" | "resonance";
 
@@ -31,7 +32,7 @@ export class Lingcao extends Phaser.Physics.Arcade.Sprite {
       .setStrokeStyle(1, 0x76d2cf, 0.7)
       .setDepth(11);
     const title = this.scene.add
-      .text(this.x, markerY - 7, "LINGCAO", {
+      .text(this.x, markerY - 7, getLocale() === "zh-CN" ? "灵草" : "LINGCAO", {
         fontFamily: "Noto Sans SC Variable, Trebuchet MS, sans-serif",
         fontSize: "11px",
         color: "#b9f0c8",
@@ -69,6 +70,7 @@ export class Lingcao extends Phaser.Physics.Arcade.Sprite {
     textureKey: string;
     animationKey: string;
     state: LingcaoVisualState;
+    markerTitle: string;
     collisionCenterOffsetX: number;
     collisionCenterOffsetY: number;
   } {
@@ -77,6 +79,7 @@ export class Lingcao extends Phaser.Physics.Arcade.Sprite {
       textureKey: this.texture.key,
       animationKey: this.anims.currentAnim?.key ?? "",
       state: this.visualState,
+      markerTitle: getLocale() === "zh-CN" ? "灵草" : "LINGCAO",
       collisionCenterOffsetX: body.center.x - this.x,
       collisionCenterOffsetY: body.center.y - this.y
     };

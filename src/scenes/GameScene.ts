@@ -3504,6 +3504,7 @@ export class GameScene extends Phaser.Scene {
               textureKey: "",
               animationKey: "",
               state: "idle",
+              markerTitle: "",
               collisionCenterOffsetX: 0,
               collisionCenterOffsetY: 0
             }),

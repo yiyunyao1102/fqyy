@@ -7,13 +7,16 @@ import {
 } from "../../src/i18n/locale";
 import { translate } from "../../src/i18n/messages";
 import {
+  getChineseFontPreloadText,
   localizeGongfa,
   localizeGongfaPackage,
   localizeLinggen,
   localizeMasteryChoice,
+  localizeRuntimeText,
   localizeSpiritTreasure,
   localizeStage,
-  localizeUpgrade
+  localizeUpgrade,
+  registerContentAdapter
 } from "../../src/i18n/content";
 import { gongfaConfigs, type GongfaId } from "../../src/data/gongfa";
 import { linggenConfigs, type LinggenId } from "../../src/data/linggen";
@@ -66,6 +69,61 @@ describe("localization", () => {
 
     expect(localizeGongfa("en", "yujian-jue").name).toBe("Yujian Jue");
     expect(localizeGongfaPackage("en", "yujian-jue").skill1.name).toBe("Flying Sword Volley");
+  });
+
+  it("falls back to English content for a future locale without a content catalog", () => {
+    const futureLocale = "ja" as never;
+    expect(localizeGongfa(futureLocale, "yujian-jue").name).toBe("Yujian Jue");
+    expect(localizeRuntimeText(futureLocale, "Lightning Judgment")).toBe("Lightning Judgment");
+  });
+
+  it("registers a future locale adapter once and falls back per missing content family", () => {
+    const futureLocale = "ja" as never;
+    const unregister = registerContentAdapter("ja", {
+      gongfa: (id) => ({ ...gongfaConfigs[id], name: "御剣術" })
+    });
+    try {
+      expect(localizeGongfa(futureLocale, "yujian-jue").name).toBe("御剣術");
+      expect(localizeLinggen(futureLocale, "metal").name).toBe("Metal Linggen");
+    } finally {
+      unregister();
+    }
+  });
+
+  it("localizes late-run generated gameplay copy without mixed English", () => {
+    const lateRunCopy = [
+      "Settings open — Run paused.",
+      "Qi is unstable. Claim the Lingcao and reveal your roots.",
+      "Meditation pause.",
+      "Cultivator fell. Qi scattered.",
+      "Lightning Judgment",
+      "Celestial thunder measures the Cultivator's foundation.",
+      "Tribulation Shades",
+      "Collapsing Safe Zones",
+      "FOUNDATION SETTLES",
+      "STAGE BREAKTHROUGH",
+      "Chuqi complete. Foundation pressure settles into Zhongqi.",
+      "Lianqi pressure deepens without breaking the flow.",
+      "Lianqi Chuqi begins.",
+      "Cleanup complete. Lianqi Chuqi is ready to advance.",
+      "Lianqi Dayuanman clears. Its concluding Tribulation rises.",
+      "Lightning Judgment clears. The tribulation deepens.",
+      "Complete the Lianqi Tribulation and open the next Gongfa slot.",
+      "Lianqi Tribulation",
+      "Continue to zhongqi",
+      "Continue to Lightning Judgment",
+      "Yujian Jue mastery reaches Rank 3. 2 ordinary refinements settle without interrupting combat.",
+      "Evade: Ready",
+      "Foundation Growth Total",
+      "SKILL 2 · UNLOCKS RANK 10",
+      "HEAVENLY TRIBULATION · 1/3",
+      "Linggen: Metal Linggen · Strong"
+    ].map((value) => localizeRuntimeText("zh-CN", value));
+
+    expect(lateRunCopy.filter((value) => /[A-Za-z]/.test(value))).toEqual([]);
+    const preload = getChineseFontPreloadText();
+    expect([...lateRunCopy.join("")].filter((character) => /\p{Script=Han}/u.test(character) && !preload.includes(character)))
+      .toEqual([]);
   });
 
   it("keeps every authored Chinese content entry free of English fallback copy", () => {

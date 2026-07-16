@@ -24,6 +24,7 @@ export interface GongfaCodexSnapshot {
   learnedPathCount: number;
   selectedGongfaId?: GongfaId;
   selectedRank?: number;
+  rankText: string;
   skill2Status?: "locked" | "unlocked";
   cardNames: string[];
   transformationNames: string[];
@@ -179,6 +180,7 @@ export class GongfaCodex {
       learnedPathCount: this.paths.length,
       selectedGongfaId: selected?.gongfaId,
       selectedRank: selected?.rank,
+      rankText: this.rank.text,
       skill2Status: selected ? (selected.skill2Unlocked ? "unlocked" : "locked") : undefined,
       cardNames: definition ? [definition.skill1.name, definition.passive.name, definition.skill2.name] : [],
       transformationNames: selected ? this.getTransformationNames(selected) : []

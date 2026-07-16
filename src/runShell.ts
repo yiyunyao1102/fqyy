@@ -38,7 +38,9 @@ async function launchGame(container: HTMLElement, seed: number): Promise<void> {
   container.appendChild(loading);
   setRandomSeed(seed);
   try {
-    await document.fonts.load('16px "Noto Sans SC Variable"', getChineseFontPreloadText());
+    if (getLocale() === "zh-CN") {
+      await document.fonts.load('16px "Noto Sans SC Variable"', getChineseFontPreloadText());
+    }
     const { createGame } = await import("./game");
     clearElement(container);
     createGame(container);

@@ -11,9 +11,12 @@ and is the source-language fallback.
 2. Add its interface messages to the catalog registry in `messages.ts`. The
    English catalog defines the typed key set; missing entries fall back to
    English instead of rendering keys.
-3. Add stable-ID content translations in `content.ts` for Gongfa, skills,
-   Linggen, stages, treasures, refinements, and transformations. Content IDs,
-   save data, build links, and gameplay rules never change with language.
+3. Register one `ContentAdapter` in `content.ts` with stable-ID translations
+   for Gongfa, skills, Linggen, stages, treasures, refinements, and
+   transformations. Each adapter method is optional, so unfinished families
+   fall back to the English source; they never borrow another translated
+   catalog. Content IDs, save data, build links, and gameplay rules never
+   change with language.
 4. Extend the catalog-completeness and browser persistence tests.
 5. Bundle a font that covers the language when the existing font does not.
 

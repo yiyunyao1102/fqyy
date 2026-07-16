@@ -100,9 +100,8 @@ export function mountToolsShell(container: HTMLElement): void {
       ? "treasures"
       : "compendium";
   let build = readSharedBuild();
-  if (locale === "zh-CN" && build.name === "Untitled Cultivation") {
-    build = { ...build, name: t("tools.planner.untitled") };
-  }
+  const displayBuildName = (): string =>
+    build.name === "Untitled Cultivation" ? t("tools.planner.untitled") : build.name;
   let selectedGongfaId = build.gongfaIds[0] ?? ("yujian-jue" as GongfaId);
   let rootFilter: RootId | "all" = "all";
   let patternFilter: GongfaPattern | "all" = "all";
@@ -354,10 +353,11 @@ export function mountToolsShell(container: HTMLElement): void {
     const identitySection = element("section", "tools-builder-section");
     identitySection.append(element("span", "tools-step", "01"), element("h2", "", t("tools.planner.foundation")));
     const name = element("input", "tools-build-name") as HTMLInputElement;
-    name.value = build.name;
+    name.value = build.name === "Untitled Cultivation" ? "" : build.name;
+    name.placeholder = t("tools.planner.untitled");
     name.maxLength = 64;
     name.setAttribute("aria-label", t("tools.planner.buildName"));
-    name.addEventListener("input", () => { build = { ...build, name: name.value || t("tools.planner.untitled") }; });
+    name.addEventListener("input", () => { build = { ...build, name: name.value || "Untitled Cultivation" }; });
     const linggenGrid = element("div", "tools-linggen-grid");
     for (const linggenId of firstSliceLinggenPool) {
       const config = localizeLinggen(locale, linggenId);
@@ -416,7 +416,7 @@ export function mountToolsShell(container: HTMLElement): void {
 
     const summary = summarizeToolsBuild(build);
     const aside = element("aside", "tools-build-summary");
-    aside.append(element("p", "tools-kicker", t("tools.planner.identity")), element("h2", "", build.name));
+    aside.append(element("p", "tools-kicker", t("tools.planner.identity")), element("h2", "", displayBuildName()));
     const summaryLinggen = element("div", "tools-summary-linggen");
     summaryLinggen.append(element("span", "", localizeLinggen(locale, build.linggenId).name), element("strong", "", summary.roots.map((root) => localizeTerm(locale, root)).join(" + ")));
     aside.append(summaryLinggen);

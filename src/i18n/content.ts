@@ -26,6 +26,35 @@ type GongfaTranslation = {
   skill2: { name: string; description: string };
 };
 
+export interface ContentAdapter {
+  term?(value: string): string;
+  buildSynergy?(synergy: { title: string; description: string }): { title: string; description: string };
+  gongfa?(id: GongfaId): GongfaConfig;
+  gongfaPackage?(id: GongfaId): GongfaPackageDefinition;
+  linggen?(id: LinggenId): LinggenConfig;
+  spiritTreasure?(id: SpiritTreasureId): SpiritTreasureConfig;
+  stage?(id: StageId): StageConfig;
+  upgrade?(id: string): UpgradeConfig;
+  masteryChoice?(id: string): MasteryChoiceDefinition;
+  runtimeText?(value: string): string;
+  choicePayload?(payload: ChoicePayload): ChoicePayload;
+}
+
+const contentAdapters: Partial<Record<string, ContentAdapter>> = {};
+
+export function registerContentAdapter(locale: string, adapter: ContentAdapter): () => void {
+  const previous = contentAdapters[locale];
+  contentAdapters[locale] = adapter;
+  return () => {
+    if (previous) contentAdapters[locale] = previous;
+    else delete contentAdapters[locale];
+  };
+}
+
+function getContentAdapter(locale: Locale): ContentAdapter | undefined {
+  return contentAdapters[locale];
+}
+
 const zhGongfa: Record<GongfaId, GongfaTranslation> = {
   "yujian-jue": {
     name: "御剑诀", lore: "以严整金气驾驭飞剑。", combatRole: "灵活游走，以精准剑阵清剿中程敌群。", visualMotif: "淡蓝剑印、整齐剑路与回旋剑弧。",
@@ -163,18 +192,23 @@ const zhTerms: Record<string, string> = {
 };
 
 export function localizeTerm(locale: Locale, value: string): string {
-  return locale === "en" ? value : zhTerms[value] ?? value;
+  return getContentAdapter(locale)?.term?.(value) ?? value;
 }
 
 export function localizeBuildSynergy(
   locale: Locale,
   synergy: { title: string; description: string }
 ): { title: string; description: string } {
-  if (locale === "en") return synergy;
+  return getContentAdapter(locale)?.buildSynergy?.(synergy) ?? synergy;
+}
+
+function localizeZhBuildSynergy(
+  synergy: { title: string; description: string }
+): { title: string; description: string } {
   const shared = /^Shared (.+) core$/.exec(synergy.title);
   if (shared) {
     const count = /^([0-9]+) Gongfa/.exec(synergy.description)?.[1] ?? "多";
-    const tag = localizeTerm(locale, shared[1]);
+    const tag = zhTerms[shared[1]] ?? shared[1];
     return { title: `${tag}系共鸣`, description: `${count} 门功法共享「${tag}」战斗特征，使出手方式彼此呼应。` };
   }
   if (synergy.title === "Mobile wave front") return { title: "身随浪走", description: "移动速度能够支撑浪形功法所需的走位与控线。" };
@@ -184,15 +218,21 @@ export function localizeBuildSynergy(
 }
 
 export function localizeGongfa(locale: Locale, id: GongfaId): GongfaConfig {
+  return getContentAdapter(locale)?.gongfa?.(id) ?? gongfaConfigs[id];
+}
+
+function localizeZhGongfa(id: GongfaId): GongfaConfig {
   const source = gongfaConfigs[id];
-  if (locale === "en") return source;
   const translated = zhGongfa[id];
   return { ...source, name: translated.name, lore: translated.lore };
 }
 
 export function localizeGongfaPackage(locale: Locale, id: GongfaId): GongfaPackageDefinition {
+  return getContentAdapter(locale)?.gongfaPackage?.(id) ?? getGongfaPackage(id);
+}
+
+function localizeZhGongfaPackage(id: GongfaId): GongfaPackageDefinition {
   const source = getGongfaPackage(id);
-  if (locale === "en") return source;
   const translated = zhGongfa[id];
   return {
     ...source,
@@ -206,23 +246,30 @@ export function localizeGongfaPackage(locale: Locale, id: GongfaId): GongfaPacka
 
 export function localizeLinggen(locale: Locale, id: LinggenId): LinggenConfig {
   const source = linggenConfigs[id];
-  return locale === "en" ? source : { ...source, ...zhLinggen[id] };
+  return getContentAdapter(locale)?.linggen?.(id) ?? source;
 }
 
 export function localizeSpiritTreasure(locale: Locale, id: SpiritTreasureId): SpiritTreasureConfig {
   const source = getSpiritTreasureConfig(id);
-  return locale === "en" ? source : { ...source, ...zhTreasures[id] };
+  return getContentAdapter(locale)?.spiritTreasure?.(id) ?? source;
 }
 
 export function localizeStage(locale: Locale, id: StageId): StageConfig {
   const source = stageConfigs[id];
-  return locale === "en" ? source : { ...source, ...zhStages[id] };
+  return getContentAdapter(locale)?.stage?.(id) ?? source;
 }
 
 export function localizeUpgrade(locale: Locale, id: string): UpgradeConfig {
+  const localized = getContentAdapter(locale)?.upgrade?.(id);
+  if (localized) return localized;
   const source = upgradeConfigs.find((item) => item.id === id);
   if (!source) throw new Error(`Unknown upgrade: ${id}`);
-  if (locale === "en") return source;
+  return source;
+}
+
+function localizeZhUpgrade(id: string): UpgradeConfig {
+  const source = upgradeConfigs.find((item) => item.id === id);
+  if (!source) throw new Error(`Unknown upgrade: ${id}`);
   const gongfaName = source.requiredGongfaIds?.[0]
     ? zhGongfa[source.requiredGongfaIds[0]].name
     : "修士根基";
@@ -236,11 +283,18 @@ export function localizeUpgrade(locale: Locale, id: string): UpgradeConfig {
 }
 
 export function localizeMasteryChoice(locale: Locale, id: string): MasteryChoiceDefinition {
+  const localized = getContentAdapter(locale)?.masteryChoice?.(id);
+  if (localized) return localized;
   const source = getMasteryChoiceDefinition(id);
   if (!source) throw new Error(`Unknown mastery choice: ${id}`);
-  if (locale === "en") return source;
+  return source;
+}
+
+function localizeZhMasteryChoice(id: string): MasteryChoiceDefinition {
+  const source = getMasteryChoiceDefinition(id);
+  if (!source) throw new Error(`Unknown mastery choice: ${id}`);
   if (source.kind === "refinement") {
-    const upgrade = localizeUpgrade(locale, id);
+    const upgrade = localizeZhUpgrade(id);
     return { ...source, name: upgrade.name, lore: upgrade.lore };
   }
   const gongfaId = source.requiredGongfaIds?.[0];
@@ -823,6 +877,10 @@ function getZhReplacementPairs(): Array<[string, string]> {
 
 const runtimeExactZh: Record<string, string> = {
   "Run Ended": "本次修行已结束",
+  "Settings open — Run paused.": "设置已打开，本次修行暂停。",
+  "Qi is unstable. Claim the Lingcao and reveal your roots.": "灵气尚不稳定。取得灵草，觉醒你的灵根。",
+  "Meditation pause.": "入定暂停。",
+  "Cultivator fell. Qi scattered.": "修士陨落，灵气溃散。",
   "Paused - ESC to resume": "已暂停 · 按 ESC 继续",
   "WASD Move · Space Evade · G Gongfa · Esc Pause": "WASD 移动 · 空格 闪避 · G 功法 · ESC 暂停",
   "WASD Move · Space Evade · G Gongfa · Esc Pause · F3 Debug": "WASD 移动 · 空格 闪避 · G 功法 · ESC 暂停 · F3 调试",
@@ -871,7 +929,24 @@ const runtimeExactZh: Record<string, string> = {
   "You leave the Spirit Treasure behind.": "你暂且留下了这件灵宝。",
   "Healing Pill restores your vitality.": "疗伤丹恢复了你的气血。",
   "Lightning judgment descends over Cloudbreak Summit.": "雷霆天罚降临破云峰。",
+  "Lightning Judgment": "雷霆裁决",
+  "Celestial thunder measures the Cultivator's foundation.": "九天雷霆衡量修士道基。",
+  "Tribulation Shades": "劫影群生",
+  "Shades gather where the storm refuses the light.": "雷云遮光之处，劫影悄然聚集。",
+  "Collapsing Safe Zones": "净域崩塌",
+  "The last sanctuary contracts beneath a broken sky.": "破碎天穹之下，最后的净域不断收缩。",
+  "Heavenly Judgment": "天道裁决",
+  "The heavens answer.": "苍天已有回应。",
+  "FOUNDATION SETTLES": "根基稳固",
+  "STAGE BREAKTHROUGH": "境界突破",
+  "Phase Transition": "阶段流转",
+  "Yuanying Heavenly Tribulation": "元婴天劫",
+  "Chuqi complete. Foundation pressure settles into Zhongqi.": "初期圆满，根基压力沉淀，迈入中期。",
+  "Zhongqi complete. Pressure deepens into Houqi.": "中期圆满，根基压力加深，迈入后期。",
+  "Houqi complete. Dayuanman approaches.": "后期圆满，大圆满已近在眼前。",
+  "Dayuanman clears. Cloudbreak Summit answers with thunder.": "大圆满已成，破云峰以雷霆回应。",
   "Unrevealed": "未觉醒",
+  "Hidden": "未显露",
   "Fully Mastered": "圆满精通",
   "Locked": "未解锁",
   "None": "无",
@@ -879,9 +954,30 @@ const runtimeExactZh: Record<string, string> = {
 };
 
 export function localizeRuntimeText(locale: Locale, value: string): string {
-  if (locale === "en" || value.length === 0) return value;
+  return getContentAdapter(locale)?.runtimeText?.(value) ?? value;
+}
+
+function localizeZhRuntimeText(value: string): string {
+  if (value.length === 0) return value;
   if (runtimeExactZh[value]) return runtimeExactZh[value];
+  const cleanup = /^Cleanup complete\. (.+) is ready to advance\.$/.exec(value);
+  if (cleanup) return `清场完成，${localizeZhRuntimeText(cleanup[1])}已可推进。`;
+  const concludingTribulation = /^(.+) Dayuanman clears\. Its concluding Tribulation rises\.$/.exec(value);
+  if (concludingTribulation) {
+    return `${localizeZhRuntimeText(concludingTribulation[1])}大圆满已成，终末天劫随之降临。`;
+  }
+  const phaseCleared = /^(.+) clears\. The tribulation deepens\.$/.exec(value);
+  if (phaseCleared) return `${localizeZhRuntimeText(phaseCleared[1])}已破，天劫愈发深重。`;
+  const stageTribulation = /^Complete the (.+) Tribulation and open the next Gongfa slot\.$/.exec(value);
+  if (stageTribulation) {
+    return `渡过${localizeZhRuntimeText(stageTribulation[1])}天劫，并开启下一功法槽位。`;
+  }
   let result = value;
+  for (const [source, translated] of Object.entries(runtimeExactZh).sort(
+    ([left], [right]) => right.length - left.length
+  )) {
+    if (result.includes(source)) result = result.replaceAll(source, translated);
+  }
   for (const [source, translated] of getZhReplacementPairs()) {
     if (result.includes(source)) result = result.replaceAll(source, translated);
   }
@@ -893,6 +989,7 @@ export function localizeRuntimeText(locale: Locale, value: string): string {
     .replaceAll("Cloudbreak Summit · Soul", "破云峰 · 元神")
     .replaceAll("LIANQI", "炼气").replaceAll("ZHUJI", "筑基").replaceAll("JINDAN", "金丹").replaceAll("YUANYING", "元婴")
     .replaceAll("Chuqi", "初期").replaceAll("Zhongqi", "中期").replaceAll("Houqi", "后期").replaceAll("Dayuanman", "大圆满")
+    .replaceAll("chuqi", "初期").replaceAll("zhongqi", "中期").replaceAll("houqi", "后期").replaceAll("dayuanman", "大圆满")
     .replace(/^Qi:/, "灵气：").replace(/^Vitality:/, "气血：").replace(/^Vitality /, "气血 ")
     .replace(/^Gongfa:/, "功法：").replace(/^Mastery:/, "精通：").replace(/^Paths:/, "功法路数：")
     .replace(/^Linggen:/, "灵根：").replace(/^Evade:/, "闪避：").replace(/^Spirit Treasures:/, "灵宝：")
@@ -902,7 +999,9 @@ export function localizeRuntimeText(locale: Locale, value: string): string {
     .replaceAll("Skill 2", "术法二").replaceAll("Casts", "施放").replaceAll("Active", "生效中").replaceAll("Ready", "就绪")
     .replaceAll("mitigation", "减伤").replaceAll("Blade Shell", "刃甲").replaceAll("unclaimed — claim it to awaken your Linggen", "尚未取得——取得后觉醒灵根")
     .replaceAll("Refinements", "淬炼").replaceAll("Transformations", "蜕变").replaceAll("Mastery", "精通")
+    .replaceAll("Tribulation", "天劫")
     .replaceAll("complete", "完成").replaceAll("Foundation Growth", "根基成长").replaceAll("Total", "累计")
+    .replaceAll("Strong", "上等").replaceAll("Medium", "中等").replaceAll("Weak", "下等")
     .replaceAll("SKILL 1 · ACTIVE", "术法一 · 已启用").replaceAll("SKILL 2 · ACTIVE", "术法二 · 已启用")
     .replaceAll("SKILL 2 · UNLOCKS RANK 10", "术法二 · 十重解锁").replaceAll("PASSIVE", "被动").replaceAll("RESOURCE", "资源")
     .replace(/^Sealed\. /, "尚未解锁。")
@@ -915,8 +1014,16 @@ export function localizeRuntimeText(locale: Locale, value: string): string {
     .replace(/ supplants (.+)\.$/, "替换了$1。")
     .replace(/ circulates through your meridians\.$/, "开始在你的经脉中运转。")
     .replace(/ mastery deepens\.$/, "的精通更进一步。")
+    .replace(/ ([0-9]+) ordinary refinement settles without interrupting combat\.$/, " 战斗未被打断，并完成 $1 项常规淬炼。")
+    .replace(/ ([0-9]+) ordinary refinements settle without interrupting combat\.$/, " 战斗未被打断，并完成 $1 项常规淬炼。")
     .replace(/ begins\.$/, "开始。")
     .replace(/^Foundation settles into /, "根基稳固，迈入");
+  result = result
+    .replace(/^MASTERY RANK ([0-9]+)$/, "精通第 $1 重")
+    .replace(/^RANK ([0-9]+) · FULLY MASTERED$/, "第 $1 重 · 精通圆满")
+    .replace(/^(.+) pressure deepens without breaking the flow\.$/, "$1根基压力加深，修行流转不息。")
+    .replace(/^(.+) Chuqi begins\.$/, "$1初期开始。")
+    .replace(/^HEAVENLY TRIBULATION · ([0-9]+)\/3$/, "天劫 · $1/3");
   return runtimeExactZh[result] ?? result;
 }
 
@@ -937,12 +1044,35 @@ export function getChineseFontPreloadText(): string {
   collectChineseStrings(zhStages, values);
   collectChineseStrings(zhEffects, values);
   collectChineseStrings(zhTerms, values);
+  collectChineseStrings(categoryNames, values);
+  collectChineseStrings(zhMasteryDrafts, values);
+  collectChineseStrings(zhMasteryOverrides, values);
   collectChineseStrings(runtimeExactZh, values);
+  [
+    "Lianqi pressure deepens without breaking the flow.",
+    "Lianqi Chuqi begins.",
+    "Cleanup complete. Lianqi Chuqi is ready to advance.",
+    "Lianqi Dayuanman clears. Its concluding Tribulation rises.",
+    "Lightning Judgment clears. The tribulation deepens.",
+    "Complete the Lianqi Tribulation and open the next Gongfa slot.",
+    "Continue to zhongqi",
+    "Continue to Lightning Judgment",
+    "Yujian Jue mastery reaches Rank 3. 2 ordinary refinements settle without interrupting combat.",
+    "MASTERY RANK 10",
+    "RANK 10 · FULLY MASTERED",
+    "Evade: Ready",
+    "Foundation Growth Total",
+    "SKILL 2 · UNLOCKS RANK 10",
+    "HEAVENLY TRIBULATION · 1/3",
+    "Replace Jade Heart Pendant",
+    "Fire Linggen stirs within your meridians."
+  ].forEach((source) => collectChineseStrings(localizeZhRuntimeText(source), values));
+  upgradeConfigs.forEach((item) => collectChineseStrings(localizeUpgrade("zh-CN", item.id), values));
+  masteryTransformationConfigs.forEach((item) => collectChineseStrings(localizeMasteryChoice("zh-CN", item.id), values));
   return values.join("");
 }
 
 function localizeChoiceOption(locale: Locale, option: ChoiceOption): ChoiceOption {
-  if (locale === "en") return option;
   if (option.kind === "gongfa" && option.id in gongfaConfigs) {
     const id = option.id as GongfaId;
     const gongfa = localizeGongfa(locale, id);
@@ -961,7 +1091,11 @@ function localizeChoiceOption(locale: Locale, option: ChoiceOption): ChoiceOptio
 }
 
 export function localizeChoicePayload(locale: Locale, payload: ChoicePayload): ChoicePayload {
-  if (locale === "en") return payload;
+  return getContentAdapter(locale)?.choicePayload?.(payload) ?? payload;
+}
+
+function localizeZhChoicePayload(payload: ChoicePayload): ChoicePayload {
+  const locale = "zh-CN" as const;
   const options = payload.options.map((option) => localizeChoiceOption(locale, option));
   let title = localizeRuntimeText(locale, payload.title);
   let subtitle = payload.subtitle ? localizeRuntimeText(locale, payload.subtitle) : undefined;
@@ -977,3 +1111,17 @@ export function localizeChoicePayload(locale: Locale, payload: ChoicePayload): C
   }
   return { ...payload, title, subtitle, options };
 }
+
+registerContentAdapter("zh-CN", {
+  term: (value) => zhTerms[value] ?? value,
+  buildSynergy: localizeZhBuildSynergy,
+  gongfa: localizeZhGongfa,
+  gongfaPackage: localizeZhGongfaPackage,
+  linggen: (id) => ({ ...linggenConfigs[id], ...zhLinggen[id] }),
+  spiritTreasure: (id) => ({ ...getSpiritTreasureConfig(id), ...zhTreasures[id] }),
+  stage: (id) => ({ ...stageConfigs[id], ...zhStages[id] }),
+  upgrade: localizeZhUpgrade,
+  masteryChoice: localizeZhMasteryChoice,
+  runtimeText: localizeZhRuntimeText,
+  choicePayload: localizeZhChoicePayload
+});
