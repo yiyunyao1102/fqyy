@@ -45,6 +45,41 @@ the purpose of the capstone.
 - Linggen controls elemental expression; class family controls combat behavior.
   Fire must not always mean caster, and Wood must not always mean summoner.
 
+## Uniqueness Gate
+
+Every Gongfa must pass this gate before implementation approval. Sharing an element,
+family, or surface tag is allowed; sharing the same complete combat loop is not.
+
+- **Automatic combat only:** no Gongfa introduces mouse, pointer, or right-stick
+  manual aiming. Player influence comes from movement, position, distance, Evade,
+  target availability, and timing.
+- **Distinct targeting rule:** nearest target, priority target, weak point chain,
+  corpse, route, interception, companion prey, and ground prediction are different
+  targeting verbs and must not collapse into generic homing.
+- **Distinct spatial shape:** fan, line, returning path, orbit, moving corridor,
+  chained zigzag, domain, trap network, companion dive, and body transformation
+  must remain mechanically legible silhouettes.
+- **Distinct resource engine:** no two Gongfa may use the same “hits build stacks,
+  stacks add damage and projectile count, stacks decay” loop under different names.
+- **Distinct failure condition:** each method must lose tempo for a different reason,
+  such as bad range, broken target chain, reversed movement, depleted ammunition,
+  missing corpses, cracked facets, lost proximity, or mistimed commitment.
+- **Distinct capstone:** a capstone must change or cash out its own core verb. It may
+  not be a generic larger volley, radial burst, or damage field with a new element.
+
+As a review rule, two Gongfa may share at most one surface trait such as projectile,
+summon, aura, or fire. They must differ in at least four of these six axes: targeting,
+spatial shape, resource, failure condition, player influence, and capstone payoff.
+
+### Approved Youxia separation
+
+- **Blazing Feather Art:** automatic fan, optimal-distance band, finite quiver and
+  reload timing, persistent Phoenix Brands, then one automatically selected straight
+  execution corridor.
+- **Drifting Frost Needle:** automatic single needle, temporary weak-point zigzag,
+  Focus from distinct targets in one chain, then an immediate reverse traversal of
+  that exact chain. It stores no persistent marks and has no execution corridor.
+
 ## Roster Map
 
 | Root | Gongfa | Family | Mastery lens | Unique core rhythm | Unique passive engine | Exclusive capstone promise | Must not resemble |
