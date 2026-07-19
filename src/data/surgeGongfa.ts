@@ -205,11 +205,11 @@ export const surgeGongfaSpecs: SurgeGongfaSpec[] = [
     crown: { id: "moonlit-cataclysm", name: "Moonlit Cataclysm", lore: "Syzygy adds satellite tidal impacts." }, domain: { id: "abyss-domain", name: "Abyss Domain", lore: "Impacts leave a stronger undertow." }, updraft: { id: "undertow-step", name: "Undertow Step", lore: "Evade plants a delayed moon seal." }
   },
   {
-    gongfaId: "sword-burial-formation", resource: "Resonance",
+    gongfaId: "sword-burial-formation", resource: "Grave Inventory",
     mechanics: { focusDamageScale: 1.46, focusPierce: 0, focusSpreadScale: 0.7, spreadCount: 2, spreadDegrees: 0, spreadDamageScale: 0.8, quickenCooldownScale: 0.75, quickenDamageScale: 0.86, quickenSpeed: 0, holdFloor: 3, cascadeGain: 2, burstCount: 3, crownPerStack: 0.5, domainDamageScale: 0.38, updraftStackScale: 0.75 },
-    focus: { id: "execution-tomb", name: "Execution Tomb", lore: "Concentrate graves beneath one strong enemy." }, spread: { id: "scattered-sword-graves", name: "Scattered Sword Graves", lore: "Seed a wider battlefield with buried blades." }, quicken: { id: "swift-burial", name: "Swift Burial", lore: "Plant lighter sword graves more rapidly." },
-    hold: { id: "unbroken-resonance", name: "Unbroken Resonance", lore: "Mature Resonance persists between waves." }, cascade: { id: "grave-echo", name: "Grave Echo", lore: "Newly caught enemies resonate twice." }, burst: { id: "sword-tomb-burst", name: "Sword-Tomb Burst", lore: "Full Resonance plants extra graves." },
-    crown: { id: "burial-crown", name: "Burial Crown", lore: "Resonance raises satellite swords." }, domain: { id: "gravefield-domain", name: "Gravefield Domain", lore: "Eruptions leave spectral sword ground." }, updraft: { id: "buried-step", name: "Buried Step", lore: "Evade plants a Resonance-scaled grave." }
+    focus: { id: "execution-tomb", name: "Lone Grave", lore: "An isolated corpse site grows one larger recorded sword." }, spread: { id: "scattered-sword-graves", name: "Collective Burial", lore: "Nearby corpse swords share one risky trespass trigger." }, quicken: { id: "swift-burial", name: "Field-Path Burial", lore: "Chronological corpse sites form a visible one-way sword path." },
+    hold: { id: "unbroken-resonance", name: "Recognize Calamity", lore: "Ordinary bodies cannot waste grave swords reserved for greater threats." }, cascade: { id: "grave-echo", name: "Rise at Life", lore: "A wider trigger spends finite swords sooner and less selectively." }, burst: { id: "sword-tomb-burst", name: "Seal the Grave", lore: "Evade can reserve up to six swords for the capstone only." },
+    crown: { id: "burial-crown", name: "Cut Across the Gravefield", lore: "Every full-inventory sword keeps its original burial direction." }, domain: { id: "gravefield-domain", name: "Ask the Leader", lore: "Every sword fixes one line toward the same strongest target snapshot." }, updraft: { id: "buried-step", name: "Old Roads Return", lore: "Every sword retraces toward the player's historical position at that death." }
   },
   {
     gongfaId: "heaven-sundering-edict", resource: "Mandate",

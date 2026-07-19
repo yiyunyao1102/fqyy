@@ -99,7 +99,9 @@ describe("expanded Gongfa archetypes", () => {
         );
       }
       if (gongfaId === "sword-burial-formation") {
-        runtime.authored.anchors.push({ kind: "grave-sword", x: 0, y: 0, value: 1, angle: 0 });
+        runtime.authored.anchors.push(...Array.from({ length: runtime.authored.maxCharges }, (_, index) => ({
+          kind: "grave-sword" as const, x: index * 14, y: 0, value: 1, angle: 0
+        })));
       }
       if (gongfaId === "frozen-river-formation") {
         runtime.authored.cycleCount = 3;

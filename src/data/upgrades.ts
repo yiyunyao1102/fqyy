@@ -499,12 +499,12 @@ const missingStartingFamilies: Array<readonly [GongfaId, FamilySeed[]]> = [
     ["fixed-syzygy", "Fixed Syzygy", "Syzygy fades more slowly.", "surgeStability", 0.84, "Passive: Abyssal Syzygy"]
   ]],
   ["sword-burial-formation", [
-    ["grave-sword-tempering", "Grave-Sword Tempering", "Buried swords erupt harder.", "skill1Damage", 5, "Skill 1: Buried Sword Array"],
-    ["scattered-graves", "Scattered Graves", "Plants another sword grave.", "skill1Count", 1, "Skill 1: Buried Sword Array"],
-    ["resonance-conduction", "Resonance Conduction", "Resonance empowers both formations.", "gongfaDamageSynergy", 2, "Owning Gongfa: both Skills"],
-    ["wider-gravefield", "Wider Gravefield", "Sword graves control more ground.", "gongfaRangeSynergy", 10, "Owning Gongfa: both Skills"],
-    ["deepening-resonance", "Deepening Resonance", "Caught enemies build Resonance faster.", "surgeBuild", 0.18, "Passive: Grave-Sword Resonance"],
-    ["unbroken-resonance", "Unbroken Resonance", "Resonance fades more slowly.", "surgeStability", 0.84, "Passive: Grave-Sword Resonance"]
+    ["grave-sword-tempering", "Grave-Sword Tempering", "Each finite grave sword rises with greater force.", "skill1Damage", 5, "Passive: Corpse-Bound Grave Swords"],
+    ["scattered-graves", "Broad Funeral Form", "Adds one visible blade arm to the same weak Funeral Sword line; it creates no grave inventory.", "skill1Count", 1, "Skill 1: Funeral Sword"],
+    ["resonance-conduction", "Burial Conduction", "Strengthens both ordinary grave rises and the full Sword Tomb.", "gongfaDamageSynergy", 2, "Owning Gongfa: both Skills"],
+    ["wider-gravefield", "Longer Burial Lines", "Extends a risen sword's fixed recorded route without widening its trigger.", "gongfaRangeSynergy", 10, "Owning Gongfa: both Skills"],
+    ["deepening-resonance", "Clear Grave Inscription", "Makes recorded burial directions easier to read; deaths still create exactly one sword.", "surgeBuild", 0.18, "Passive: Corpse-Bound Grave Swords"],
+    ["unbroken-resonance", "Hardened Grave Seal", "Strengthens sealed inventory without making any sword reusable.", "surgeStability", 0.84, "Passive: Corpse-Bound Grave Swords"]
   ]],
   ["heaven-sundering-edict", [
     ["edict-tempering", "Edict Tempering", "Sundering Stroke judges harder.", "skill1Damage", 12, "Skill 1: Sundering Stroke"],

@@ -271,6 +271,7 @@ export class GameScene extends Phaser.Scene {
   private asuraBodyMarker?: Phaser.GameObjects.Graphics;
   private readonly mistSoulMarkers = new Map<number, Phaser.GameObjects.Graphics>();
   private frozenDebtMarker?: Phaser.GameObjects.Graphics;
+  private swordBurialMarker?: Phaser.GameObjects.Graphics;
   private moonfallMarker?: Phaser.GameObjects.Graphics;
   private readonly moonfallVelocityRecord = new Map<number, { x: number; y: number }>();
   private verdantGlyphMarker?: Phaser.GameObjects.Graphics;
@@ -453,6 +454,11 @@ export class GameScene extends Phaser.Scene {
         return `Frozen River: Prison active ${Math.ceil(runtime.authored.phaseElapsedMs / 100) / 10}s · Debtors ${debtors} · crossing lines resolves fate`;
       }
       return `Frozen River: Debtors ${debtors} · Waiting seals ${waiting} · Transfers ${Math.min(3, runtime.authored.cycleCount)}/3`;
+    }
+    if (runtime.gongfaId === "sword-burial-formation") {
+      const graves = runtime.authored.anchors.filter((anchor) => anchor.kind === "grave-sword");
+      const sealed = graves.filter((grave) => grave.sealed).length;
+      return `Sword Burial: Graves ${graves.length}/${runtime.authored.maxCharges} · Sealed ${sealed}/6 · Sword Tomb ${graves.length >= runtime.authored.maxCharges ? "ready" : "gathering"}`;
     }
     if (runtime.gongfaId === "ironwood-wave-form") {
       const walls = runtime.authored.anchors.filter((anchor) => anchor.kind === "wall");
@@ -912,6 +918,9 @@ export class GameScene extends Phaser.Scene {
       }
       if (result.runtime.gongfaId === "frozen-river-formation") {
         this.syncFrozenDebtMarker(result.runtime);
+      }
+      if (result.runtime.gongfaId === "sword-burial-formation") {
+        this.syncSwordBurialMarker(result.runtime);
       }
       if (result.runtime.gongfaId === "moonfall-tide-ritual") {
         this.syncMoonfallMarker(result.runtime);
@@ -2312,6 +2321,9 @@ export class GameScene extends Phaser.Scene {
       if (result.runtime.gongfaId === "frozen-river-formation") {
         this.syncFrozenDebtMarker(result.runtime);
       }
+      if (result.runtime.gongfaId === "sword-burial-formation") {
+        this.syncSwordBurialMarker(result.runtime);
+      }
     }
     this.restorePrimaryRuntimeAdapter();
   }
@@ -2868,14 +2880,18 @@ export class GameScene extends Phaser.Scene {
       visual.fillStyle(identity.secondary, 0.9);
       visual.fillCircle(originX, originY, 7);
     } else {
-      visual.lineStyle(Math.max(3, command.width * 0.38), identity.secondary, 0.9);
+      const leader = command.graveLaw === "leader";
+      const oldRoad = command.graveLaw === "old-road";
+      const mound = command.graveLaw === "mound";
+      const forest = command.graveLaw === "forest";
+      visual.lineStyle(Math.max(3, command.width * (leader ? 0.55 : mound ? 0.46 : 0.38)), leader ? 0xffffff : identity.secondary, 0.9);
       visual.lineBetween(originX, originY, endX, endY);
-      visual.lineStyle(1, identity.accent, 0.8);
+      visual.lineStyle(oldRoad ? 3 : 1, oldRoad ? identity.secondary : identity.accent, oldRoad ? 0.42 : 0.8);
       visual.lineBetween(
         originX - Math.sin(angle) * command.width * 0.5,
         originY + Math.cos(angle) * command.width * 0.5,
-        endX,
-        endY
+        forest ? originX + (endX - originX) * 0.62 : endX,
+        forest ? originY + (endY - originY) * 0.62 : endY
       );
       const graveSigil = createGongfaSigil(
         this,
@@ -3380,6 +3396,54 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
+  }
+
+  private syncSwordBurialMarker(runtime: GongfaRuntime): void {
+    const graves = runtime.authored.anchors.filter((anchor) => anchor.kind === "grave-sword");
+    if (graves.length === 0) {
+      this.swordBurialMarker?.destroy();
+      this.swordBurialMarker = undefined;
+      return;
+    }
+    const identity = getGongfaVisualIdentity(runtime.gongfaId);
+    const learned = runtime.mastery.masteryLearnedIds;
+    const marker = this.swordBurialMarker ?? this.add.graphics().setDepth(7);
+    this.swordBurialMarker = marker;
+    marker.clear();
+    if (learned.includes("field-path-sword-forest")) {
+      marker.lineStyle(2, identity.accent, 0.38);
+      graves.slice(0, -1).forEach((grave, index) => {
+        const next = graves[index + 1]!;
+        marker.lineBetween(grave.x, grave.y, next.x, next.y);
+      });
+    }
+    if (learned.includes("collective-burial-sword-mound")) {
+      marker.lineStyle(5, identity.accent, 0.18);
+      graves.forEach((grave, index) => {
+        graves.slice(index + 1)
+          .filter((other) => Phaser.Math.Distance.Between(grave.x, grave.y, other.x, other.y) <= 120)
+          .forEach((other) => marker.lineBetween(grave.x, grave.y, other.x, other.y));
+      });
+    }
+    graves.forEach((grave) => {
+      const angle = grave.angle ?? 0;
+      const isolatedGreat = learned.includes("lone-grave-great-que") && grave.value > 1;
+      const bladeLength = isolatedGreat ? 38 : 25;
+      marker.lineStyle(isolatedGreat ? 6 : 4, grave.sealed ? identity.secondary : identity.accent, 0.92);
+      marker.lineBetween(
+        grave.x - Math.cos(angle) * 7, grave.y - Math.sin(angle) * 7,
+        grave.x + Math.cos(angle) * bladeLength, grave.y + Math.sin(angle) * bladeLength
+      );
+      marker.lineStyle(2, identity.secondary, 0.85);
+      marker.lineBetween(
+        grave.x - Math.cos(angle + Math.PI / 2) * 9,
+        grave.y - Math.sin(angle + Math.PI / 2) * 9,
+        grave.x + Math.cos(angle + Math.PI / 2) * 9,
+        grave.y + Math.sin(angle + Math.PI / 2) * 9
+      );
+      marker.strokeCircle(grave.x, grave.y, isolatedGreat ? 18 : 12);
+      if (grave.sealed) marker.strokeCircle(grave.x, grave.y, 22);
+    });
   }
 
   private fireAuthoredFrozenRiver(

@@ -170,10 +170,10 @@ export const gongfaPackageCatalog: Record<GongfaId, GongfaPackageDefinition> = {
     skill2: { id: "moonfall-cataclysm", name: "Moonless Eclipse", description: "After three high-Syzygy resolutions, a giant mobile moon suspends enemies, records their motion, then bends that motion inward once.", tags: ["ritual", "water", "ailment", "defensive"] }
   },
   "sword-burial-formation": {
-    combatRole: "A metal trapper that seeds lanes with buried blades and punishes enemies who cross the gravefield.", visualMotif: "Half-buried gold swords, grave seals, and rising blade circles.",
-    skill1: { id: "buried-sword-array", name: "Buried Sword Array", description: "Plants sword graves beneath likely routes; each repeatedly erupts when the formation resonates.", tags: ["trap", "metal", "sword"] },
-    passive: { name: "Grave-Sword Resonance", resource: "Resonance", description: "Caught enemies deepen Resonance, multiplying and strengthening later sword graves." },
-    skill2: { id: "ten-thousand-sword-tomb", name: "Ten-Thousand Sword Tomb", description: "Consecrates a vast gravefield where linked buried swords rise in relentless waves.", tags: ["trap", "metal", "sword"] }
+    combatRole: "A corpse-site tactician that turns each enemy death into exactly one fixed, one-use grave sword.", visualMotif: "Persistent half-buried gold blades, recorded direction bars, sealed grave rings, mounds, and chronological sword paths.",
+    skill1: { id: "buried-sword-array", name: "Funeral Sword", description: "A weak automatic finishing line; it never plants a grave—only an actual enemy death leaves one sword at that corpse site.", tags: ["trap", "metal", "sword"] },
+    passive: { name: "Corpse-Bound Grave Swords", resource: "Grave Inventory", description: "Each death records one fixed direction and one finite sword; trespass raises and consumes it once." },
+    skill2: { id: "ten-thousand-sword-tomb", name: "Ten-Thousand Sword Tomb", description: "Only at full inventory, every corpse sword performs one selected fixed flight and the entire gravefield empties.", tags: ["trap", "metal", "sword"] }
   },
   "heaven-sundering-edict": {
     combatRole: "Draw one automatically chosen physical sword line, fix it in world space, then judge the exact same line after a delay.", visualMotif: "A thin gold physical inscription followed by a brighter white spell judgment on identical coordinates.",

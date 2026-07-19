@@ -49,7 +49,7 @@ implementation, testing, balance review, and future regression checks.
 | Flame-Demon Body Art / 炎魔锻体术 | Youxuan | Approved | Implemented and verified |
 | Mist Wraith Canon / 雾灵真典 | Youxuan | Approved | Implemented and verified |
 | Frozen River Formation / 冰河伏阵 | Youxuan | Approved | Implemented and verified |
-| Sword-Burial Formation / 葬剑伏阵 | Youxuan | Approved | Pending redesign |
+| Sword-Burial Formation / 葬剑伏阵 | Youxuan | Approved | Implemented and verified |
 | Myriad-Root Lifebinding Canon / 万根寄命经 | Youxuan | Approved | Pending redesign |
 
 ---

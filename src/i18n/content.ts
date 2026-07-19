@@ -177,8 +177,8 @@ const zhGongfa: Record<GongfaId, GongfaTranslation> = {
     skill1: { name: "悬月引潮", description: "悬月在最密敌群处成形并滞后跟随，附近敌人沿真实轨道运行，固定时间后自动结算。" }, passive: { name: "深渊合朔", resource: "合朔", description: "只计算仍在轨敌人完成的实际角运动；命中与等待均不增长，逃脱会失去未成周天。" }, skill2: { name: "无月蚀界", description: "三次高合朔结算后，巨月随身缓行并悬停敌人，最终把其原有速度弯向月心一次。" }
   },
   "sword-burial-formation": {
-    name: "葬剑伏阵", lore: "藏万剑于土，闻敌而鸣。", combatRole: "沿敌路埋设剑冢，以反复破土剑潮惩罚闯阵之敌。", visualMotif: "半埋金剑、墓印与升腾剑环。",
-    skill1: { name: "埋剑阵", description: "在行路处布下剑冢，阵势共鸣时反复破土。" }, passive: { name: "墓剑共鸣", resource: "共鸣", description: "困敌加深共鸣，增加并强化后续剑冢。" }, skill2: { name: "万剑陵", description: "化广域为剑陵，埋剑相连，连绵升起。" }
+    name: "葬剑伏阵", lore: "一尸葬一剑，一起空一坟。", combatRole: "把每个敌人的真实死亡位置化为一把有限墓剑；后来者踏入墓位时，剑只沿所记方向起飞一次。", visualMotif: "常驻半埋金剑、死亡方向横格、封冢外环、合葬剑丘与按埋葬次序相连的阡陌剑路。",
+    skill1: { name: "送葬剑", description: "自动斩向首个受伤敌人的微弱终结线，本身绝不预埋剑冢；只有真实死亡才在尸位留下一剑。" }, passive: { name: "尸位墓剑", resource: "墓剑库存", description: "每次死亡只记录一处、一向、一剑；后来者触墓便起剑并永久消耗，命中不会增殖。" }, skill2: { name: "万剑陵", description: "墓剑满十二把时，所有尸位剑按所选剑路各飞一次，无论命中与否都清空整座剑陵。" }
   },
   "heaven-sundering-edict": {
     name: "断天敕令", lore: "先书一笔，再敕同痕；留于线者，方受全判。", combatRole: "自动选择威胁线完成一次物理书写，将其固定在世界坐标，延迟后由法术裁决原样重写。", visualMotif: "细金物理敕线、完全重合的白色法术复判与保留线章。",

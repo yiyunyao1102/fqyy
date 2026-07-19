@@ -545,6 +545,7 @@ export type GongfaRuntimeCommand =
       length: number;
       sourceGongfaId: GongfaId;
       angleOffset?: number;
+      graveLaw?: "recorded" | "leader" | "old-road" | "great-que" | "mound" | "forest";
       slowMultiplier?: number;
       slowDurationMs?: number;
       maxHits?: number;
@@ -2098,7 +2099,7 @@ export function createGongfaRuntime(input: CreateGongfaRuntimeInput): GongfaRunt
         ? { ...blazingFeatherDefaults, ...input.blazingFeather }
         : undefined,
     surge: surgeGongfaIdSet.has(input.gongfaId) &&
-      !["verdant-ring-scripture", "ice-mirror-guard", "ironwood-wave-form", "flame-demon-body-art", "mist-wraith-canon", "frozen-river-formation"].includes(input.gongfaId)
+      !["verdant-ring-scripture", "ice-mirror-guard", "ironwood-wave-form", "flame-demon-body-art", "mist-wraith-canon", "frozen-river-formation", "sword-burial-formation"].includes(input.gongfaId)
       ? { ...surgeDefaults, ...input.surge }
       : undefined,
     authored: {
@@ -3324,7 +3325,7 @@ function advanceAuthoredWorldFacts(
         )[0];
       if (nearest && distanceSquared(nearest.x, nearest.y, playerX, playerY) <= 76 ** 2) {
         nearest.sealed = true;
-        nearest.value *= 1.35;
+        nearest.value *= 1.35 * Math.pow(1.16, masteryEffectTiers(learnedIds, "surgeStability"));
       }
     }
     return;
@@ -4235,11 +4236,14 @@ function advanceAuthoredWorldFacts(
   if (runtime.gongfaId === "sword-burial-formation") {
     const targets = event.targets ?? [];
     const retained = [] as typeof state.anchors;
+    const consumed = new Set<(typeof state.anchors)[number]>();
+    const graveSwords = state.anchors.filter((anchor) => anchor.kind === "grave-sword");
     for (const anchor of state.anchors) {
       if (anchor.kind !== "grave-sword") {
         retained.push(anchor);
         continue;
       }
+      if (consumed.has(anchor)) continue;
       if (anchor.sealed && learnedIds.includes("seal-grave-treading-stars")) {
         retained.push(anchor);
         continue;
@@ -4254,21 +4258,36 @@ function advanceAuthoredWorldFacts(
         retained.push(anchor);
         continue;
       }
-      commands.push({
-        kind: "authored-line-strike",
-        style: "grave-sword-rise",
-        origin: { x: anchor.x, y: anchor.y },
-        angle: anchor.angle ?? 0,
-        damage: runtime.combat.damage * anchor.value *
-          (learnedIds.includes("recognize-calamity-leave-sheath") ? 1.35 :
-            learnedIds.includes("seal-grave-treading-stars") ? 0.72 : 1),
-        width: Math.max(18, runtime.combat.auraRadius * 0.42),
-        length: Math.max(260, runtime.combat.range),
-        sourceGongfaId: runtime.gongfaId
+      const triggerGroup = learnedIds.includes("collective-burial-sword-mound")
+        ? graveSwords.filter((grave) => !grave.sealed && distanceSquared(grave.x, grave.y, anchor.x, anchor.y) <= 120 ** 2)
+        : learnedIds.includes("field-path-sword-forest")
+          ? graveSwords.slice(graveSwords.indexOf(anchor), graveSwords.indexOf(anchor) + 3).filter((grave) => !grave.sealed)
+          : [anchor];
+      triggerGroup.forEach((grave, index) => {
+        const nextGrave = learnedIds.includes("field-path-sword-forest") ? triggerGroup[index + 1] : undefined;
+        const angle = nextGrave
+          ? Math.atan2(nextGrave.y - grave.y, nextGrave.x - grave.x)
+          : grave.angle ?? 0;
+        commands.push({
+          kind: "authored-line-strike",
+          style: "grave-sword-rise",
+          origin: { x: grave.x, y: grave.y },
+          angle,
+          graveLaw: learnedIds.includes("collective-burial-sword-mound") ? "mound" :
+            learnedIds.includes("field-path-sword-forest") ? "forest" :
+              learnedIds.includes("lone-grave-great-que") && grave.value > 1 ? "great-que" : "recorded",
+          damage: runtime.combat.damage * grave.value *
+            (learnedIds.includes("recognize-calamity-leave-sheath") ? 1.35 :
+              learnedIds.includes("seal-grave-treading-stars") ? 0.72 : 1),
+          width: learnedIds.includes("lone-grave-great-que") && grave.value > 1 ? Math.max(28, runtime.combat.auraRadius * 0.58) : Math.max(18, runtime.combat.auraRadius * 0.42),
+          length: learnedIds.includes("lone-grave-great-que") && grave.value > 1 ? Math.max(390, runtime.combat.range * 1.35) : Math.max(260, runtime.combat.range),
+          sourceGongfaId: runtime.gongfaId
+        });
+        consumed.add(grave);
       });
     }
-    state.anchors = retained;
-    state.charges = retained.filter((anchor) => anchor.kind === "grave-sword").length;
+    state.anchors = retained.filter((anchor) => !consumed.has(anchor));
+    state.charges = state.anchors.filter((anchor) => anchor.kind === "grave-sword").length;
     state.resource = state.charges / Math.max(1, state.maxCharges);
   }
 
@@ -4512,6 +4531,7 @@ export function advanceGongfaRuntime(
     runtime.gongfaId !== "flame-demon-body-art" &&
     runtime.gongfaId !== "mist-wraith-canon" &&
     runtime.gongfaId !== "frozen-river-formation" &&
+    runtime.gongfaId !== "sword-burial-formation" &&
     event.kind !== "skill2"
   ) {
     return { runtime, commands: [] };
@@ -5168,10 +5188,14 @@ export function advanceGongfaRuntime(
     }
     if (event.skill2Id === "ten-thousand-sword-tomb" && next.gongfaId === "sword-burial-formation") {
       const graves = next.authored.anchors.filter((anchor) => anchor.kind === "grave-sword");
-      if (graves.length > 0) {
+      if (graves.length >= next.authored.maxCharges) {
         const learnedIds = event.learnedMasteryIds;
         const asksLeader = learnedIds.includes("myriad-edges-ask-the-leader");
         const oldRoads = learnedIds.includes("old-roads-return-the-soul");
+        const strongest = [...(event.targets ?? [])].sort((a, b) => {
+          const rank = (target: AuthoredTargetFact): number => target.rank === "boss" ? 3 : target.rank === "elite" ? 2 : 1;
+          return rank(b) * 10 + b.healthRatio - (rank(a) * 10 + a.healthRatio);
+        })[0];
         graves.forEach((grave, index) => {
           const oldRoadAngle = Math.atan2(
             (grave.originPlayerY ?? grave.y) - grave.y,
@@ -5181,7 +5205,10 @@ export function advanceGongfaRuntime(
             kind: "authored-line-strike",
             style: "grave-sword-rise",
             origin: { x: grave.x, y: grave.y },
-            ...(asksLeader ? { aimMode: "strongest" as const } : { angle: oldRoads ? oldRoadAngle : grave.angle ?? 0 }),
+            angle: asksLeader && strongest
+              ? Math.atan2(strongest.y - grave.y, strongest.x - grave.x)
+              : oldRoads ? oldRoadAngle : grave.angle ?? 0,
+            graveLaw: asksLeader ? "leader" : oldRoads ? "old-road" : "recorded",
             damage: Math.max(1, Math.floor(skill2Base.damage * grave.value * skill2Stats.damageScale)),
             width: 18 + skill2Stats.coverage * 3,
             length: Math.max(520, skill2Base.range * 1.7),
@@ -6327,7 +6354,7 @@ export function planGongfaAttack(
       origin: "player",
       aimMode: "nearest",
       damage: Math.max(1, Math.floor(runtime.combat.damage * 0.3)),
-      width: 7,
+      width: 7 + (runtime.skill1Refinements?.countBonus ?? 0) * 3,
       length: Math.max(220, runtime.combat.range * 0.82),
       sourceGongfaId: runtime.gongfaId
     }];

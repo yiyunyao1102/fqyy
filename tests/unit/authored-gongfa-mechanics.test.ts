@@ -269,6 +269,65 @@ describe("approved Gongfa mechanic contracts", () => {
     expect(eliteOnly.runtime.authored.anchors).toHaveLength(1);
   });
 
+  it("makes Sword-Burial R3 choices change grave structure instead of only damage", () => {
+    const graves = [
+      { kind: "grave-sword" as const, x: 0, y: 0, value: 0.72, angle: 0 },
+      { kind: "grave-sword" as const, x: 60, y: 0, value: 0.72, angle: Math.PI / 2 },
+      { kind: "grave-sword" as const, x: 60, y: 60, value: 0.72, angle: Math.PI }
+    ];
+    const collective = createGongfaRuntime({ gongfaId: "sword-burial-formation" });
+    collective.authored.anchors.push(...graves.map((grave) => ({ ...grave })));
+    const mound = advanceGongfaRuntime(collective, {
+      kind: "tick", deltaMs: 16, nearbyEnemyCount: 1,
+      learnedMasteryIds: ["collective-burial-sword-mound"],
+      targets: [{ targetId: 31, x: 0, y: 0, healthRatio: 1, rank: "ordinary" }]
+    });
+    expect(mound.commands).toHaveLength(3);
+    expect(mound.commands.every((command) => command.kind === "authored-line-strike" && command.graveLaw === "mound")).toBe(true);
+    expect(mound.runtime.authored.anchors).toHaveLength(0);
+
+    const forestRuntime = createGongfaRuntime({ gongfaId: "sword-burial-formation" });
+    forestRuntime.authored.anchors.push(...graves.map((grave) => ({ ...grave, value: 0.65 })));
+    const forest = advanceGongfaRuntime(forestRuntime, {
+      kind: "tick", deltaMs: 16, nearbyEnemyCount: 1,
+      learnedMasteryIds: ["field-path-sword-forest"],
+      targets: [{ targetId: 32, x: 0, y: 0, healthRatio: 1, rank: "ordinary" }]
+    });
+    expect(forest.commands).toEqual([
+      expect.objectContaining({ graveLaw: "forest", angle: 0 }),
+      expect.objectContaining({ graveLaw: "forest", angle: Math.PI / 2 }),
+      expect.objectContaining({ graveLaw: "forest", angle: Math.PI })
+    ]);
+    expect(forest.runtime.authored.anchors).toHaveLength(0);
+  });
+
+  it("requires full grave inventory and fixes every Ask-the-Leader route at cast time", () => {
+    const runtime = createGongfaRuntime({ gongfaId: "sword-burial-formation" });
+    runtime.authored.anchors.push(...Array.from({ length: runtime.authored.maxCharges - 1 }, (_, index) => ({
+      kind: "grave-sword" as const, x: index * 10, y: 0, value: 1, angle: 0
+    })));
+    const facts = [
+      { targetId: 33, x: 300, y: 100, healthRatio: 0.5, rank: "boss" as const },
+      { targetId: 34, x: 20, y: 0, healthRatio: 1, rank: "ordinary" as const }
+    ];
+    const premature = advanceGongfaRuntime(runtime, {
+      kind: "skill2", skill2Id: "ten-thousand-sword-tomb", nearbyEnemyCount: 2,
+      eligibleTargetCount: 2, learnedMasteryIds: ["myriad-edges-ask-the-leader"], targets: facts
+    });
+    expect(premature.commands).toEqual([]);
+    premature.runtime.authored.anchors.push({ kind: "grave-sword", x: 110, y: 0, value: 1, angle: 0 });
+    const tomb = advanceGongfaRuntime(premature.runtime, {
+      kind: "skill2", skill2Id: "ten-thousand-sword-tomb", nearbyEnemyCount: 2,
+      eligibleTargetCount: 2, learnedMasteryIds: ["myriad-edges-ask-the-leader"], targets: facts
+    });
+    expect(tomb.commands).toHaveLength(runtime.authored.maxCharges);
+    expect(tomb.commands.every((command) =>
+      command.kind === "authored-line-strike" && command.graveLaw === "leader" &&
+      command.aimMode === undefined && command.angle !== undefined
+    )).toBe(true);
+    expect(tomb.runtime.authored.anchors).toHaveLength(0);
+  });
+
   it("makes Flame-Demon health bands and rank-3 routes mechanically distinct", () => {
     const runtime = createGongfaRuntime({ gongfaId: "flame-demon-body-art" });
     runtime.authored.secondaryResource = 0.35;
