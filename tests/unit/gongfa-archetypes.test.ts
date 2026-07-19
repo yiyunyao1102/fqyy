@@ -13,7 +13,7 @@ const archetypes = [
   ["mist-wraith-canon", "authored-line-strike", "hundred-ghost-procession", "authored-line-strike"],
   ["heavenfall-body-art", "authored-heavenfall-body", "star-breaking-descent", "authored-star-descent"],
   ["thousand-root-formation", "authored-root-infection", "myriad-root-killing-field", "authored-root-ancestor"],
-  ["flame-demon-body-art", "authored-blood-combination", "asura-conflagration", "star-breaking-descent"],
+  ["flame-demon-body-art", "authored-blood-combination", "asura-conflagration", "authored-asura-transformation"],
   ["vermilion-bird-covenant", "authored-vermilion-flight", "vermilion-host-descent", "authored-vermilion-flight"],
   ["frozen-river-formation", "authored-cold-debt-placement", "frozen-river-prison", "authored-frozen-river-network"],
   ["moonfall-tide-ritual", "authored-moon-orbit", "moonfall-cataclysm", "authored-moon-orbit"],
@@ -110,6 +110,11 @@ describe("expanded Gongfa archetypes", () => {
         runtime.authored.resource = 1;
       }
       if (gongfaId === "myriad-beast-grove") runtime.authored.resource = 1;
+      if (gongfaId === "flame-demon-body-art") {
+        runtime.mastery.masterySkill2Id = expectedSkill2;
+        runtime.mastery.masterySkill2CooldownRemaining = 0;
+        runtime.mastery.masteryLearnedIds = ["world-burning-asura"];
+      }
       if (gongfaId === "ancient-tree-body-art") {
         runtime.authored.phase = 1;
         runtime.authored.charges = runtime.authored.maxCharges;
@@ -131,7 +136,10 @@ describe("expanded Gongfa archetypes", () => {
       if (gongfaId === "nine-sun-calamity-seal") runtime.authored.charges = 9;
       if (gongfaId === "moonfall-tide-ritual") runtime.authored.cycleCount = 3;
       expect(getRank10Skill2Id(gongfaId)).toBe(expectedSkill2);
-      const result = gongfaId === "ancient-tree-body-art" ? advanceGongfaRuntime(runtime, {
+      const result = gongfaId === "flame-demon-body-art" ? advanceGongfaRuntime(runtime, {
+        kind: "authored-asura-transform", healthRatio: 0.19,
+        learnedMasteryIds: ["world-burning-asura"]
+      }) : gongfaId === "ancient-tree-body-art" ? advanceGongfaRuntime(runtime, {
         kind: "tick", deltaMs: 900, nearbyEnemyCount: 8, isMoving: false,
         playerX: 0, playerY: 0,
         targets: [{ targetId: 89, x: 120, y: 0, healthRatio: 1, rank: "elite" }]

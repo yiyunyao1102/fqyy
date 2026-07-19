@@ -520,6 +520,11 @@ describe("Gongfa runtime", () => {
         runtime.authored.anchors.push({ kind: "trail", x: 0, y: 0, angle: 0, value: 30, maxValue: 340 });
       }
       if (gongfaId === "myriad-beast-grove") runtime.authored.resource = 1;
+      if (gongfaId === "flame-demon-body-art") {
+        runtime.mastery.masterySkill2Id = skill2Id;
+        runtime.mastery.masterySkill2CooldownRemaining = 0;
+        runtime.mastery.masteryLearnedIds = ["world-burning-asura"];
+      }
       if (gongfaId === "ancient-tree-body-art") {
         runtime.authored.phase = 1;
         runtime.authored.charges = runtime.authored.maxCharges;
@@ -569,7 +574,12 @@ describe("Gongfa runtime", () => {
           { kind: "infection", targetId: 94, x: 60, y: 0, value: 0, infectionStage: 0 }
         );
       }
-      const result = gongfaId === "ancient-tree-body-art"
+      const result = gongfaId === "flame-demon-body-art"
+        ? advanceGongfaRuntime(runtime, {
+            kind: "authored-asura-transform", healthRatio: 0.19,
+            learnedMasteryIds: ["world-burning-asura"]
+          })
+        : gongfaId === "ancient-tree-body-art"
         ? advanceGongfaRuntime(runtime, {
             kind: "tick", deltaMs: 900, nearbyEnemyCount: 3, isMoving: false,
             playerX: 0, playerY: 0,

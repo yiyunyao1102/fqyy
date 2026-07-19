@@ -159,8 +159,8 @@ const zhGongfa: Record<GongfaId, GongfaTranslation> = {
     skill2: { name: "万根同祖", description: "令至少四条寄生根破体而出，沿宿主决定的路线爬行，并一次汇成根母。" }
   },
   "flame-demon-body-art": {
-    name: "炎魔锻体术", lore: "熔血为炉，怒火铸身。", combatRole: "贴身猛攻，以连拳与反震积怒，终以炎爆重击收式。", visualMotif: "血红炉拳、魔角炎弧与焦黑震环。",
-    skill1: { name: "炉血连式", description: "连续施展近身炎拳，最终以大范围重击点燃余敌。" }, passive: { name: "魔心反势", resource: "怒势", description: "近战与反震积累怒势，强化下一轮连式。" }, skill2: { name: "修罗焚世", description: "化身修罗，以连续贴身爆拳焚尽周遭敌群。" }
+    name: "炎魔锻体术", lore: "熔血为炉，以残躯铸不可返之魔身。", combatRole: "贴身自动连击；首式无偿，后三式依次燃烧当前生命，低血量会显露不同肢体与终式。", visualMotif: "逐段显现的炉拳、侧爪、炉心长击，以及不可逆的常驻双角修罗身。",
+    skill1: { name: "炉血连式", description: "首击免费；继续近战会依次燃烧当前生命的 6%、8%、10%。离开近战或闪避会中止且不返还。" }, passive: { name: "残血魔相", resource: "生命区间", description: "生命越低，连式越完整；命中不积累资源，只有完整终击可以按规则返血。" }, skill2: { name: "阿修罗心", description: "生命低于 20% 且完整终击命中后，按所选法则永久化为修罗并锁定可恢复生命上限。" }
   },
   "vermilion-bird-covenant": {
     name: "朱雀灵契", lore: "独契一羽朱雀，以险飞与安归养成同一性命。", combatRole: "护持唯一朱雀完成出击与返巢；它有独立生命，倒下后会失去凤契。", visualMotif: "唯一朱红鸟影、出返羽路、生命契环与实体涅槃卵。",

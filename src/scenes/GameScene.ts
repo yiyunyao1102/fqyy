@@ -268,6 +268,7 @@ export class GameScene extends Phaser.Scene {
   private heavenfallBodyMarker?: Phaser.GameObjects.Graphics;
   private ancientTreeMarker?: Phaser.GameObjects.Graphics;
   private ancientTreeMarkerSignature = "";
+  private asuraBodyMarker?: Phaser.GameObjects.Graphics;
   private moonfallMarker?: Phaser.GameObjects.Graphics;
   private readonly moonfallVelocityRecord = new Map<number, { x: number; y: number }>();
   private verdantGlyphMarker?: Phaser.GameObjects.Graphics;
@@ -420,6 +421,14 @@ export class GameScene extends Phaser.Scene {
     if (runtime.gongfaId === "ancient-tree-body-art") {
       const state = runtime.authored.phase === 0 ? "Mobile" : runtime.authored.phase === 1 ? "Rooted" : runtime.authored.phase === 2 ? "Uprooting" : "World-Tree";
       return `Ancient Tree: ${state} · Rings ${runtime.authored.charges}/${runtime.authored.maxCharges}${runtime.authored.phase === 2 ? ` · ${Math.ceil(runtime.authored.phaseElapsedMs / 100) / 10}s` : ""}`;
+    }
+    if (runtime.gongfaId === "flame-demon-body-art") {
+      const healthBand = runtime.authored.secondaryResource > 0.7 ? "Tempered" :
+        runtime.authored.secondaryResource > 0.4 ? "Clawed" :
+          runtime.authored.secondaryResource > 0.2 ? "Furnace-Heart" : "Demon Revealed";
+      const choice = runtime.mastery.masteryLearnedIds.includes("undying-asura") ? "Undying" :
+        runtime.mastery.masteryLearnedIds.includes("world-burning-asura") ? "World-Burning" : "Life-Hunting";
+      return `Flame-Demon: ${runtime.authored.phase === 1 ? `${choice} Asura · irreversible` : healthBand} · Health ${Math.floor(runtime.authored.secondaryResource * 100)}%`;
     }
     if (runtime.gongfaId === "ironwood-wave-form") {
       const walls = runtime.authored.anchors.filter((anchor) => anchor.kind === "wall");
@@ -870,6 +879,9 @@ export class GameScene extends Phaser.Scene {
       }
       if (result.runtime.gongfaId === "ancient-tree-body-art") {
         this.syncAncientTreeMarker(result.runtime);
+      }
+      if (result.runtime.gongfaId === "flame-demon-body-art") {
+        this.syncAsuraBodyMarker(result.runtime);
       }
       if (result.runtime.gongfaId === "moonfall-tide-ritual") {
         this.syncMoonfallMarker(result.runtime);
@@ -2491,6 +2503,11 @@ export class GameScene extends Phaser.Scene {
         return;
       }
 
+      if (command.kind === "authored-asura-transformation") {
+        this.presentAuthoredAsuraTransformation(command);
+        return;
+      }
+
       if (command.kind === "authored-cold-debt-placement") {
         this.presentColdDebtSeals(command);
         return;
@@ -2855,6 +2872,7 @@ export class GameScene extends Phaser.Scene {
     }
     let totalHealthBurned = 0;
     let combinationStayedValid = true;
+    let killedOrdinary = false;
     const combinationSerial = ++this.bloodCombinationSerial;
     for (let strike = 0; strike < command.strikeCount; strike += 1) {
       this.time.delayedCall(strike * command.staggerMs, () => {
@@ -2886,23 +2904,25 @@ export class GameScene extends Phaser.Scene {
           totalHealthBurned += healthCost;
           this.spawnDamageNumber(this.player.x, this.player.y - 26, healthCost);
         }
+        let hitTargets: Enemy[] = [];
+        const armCount = command.shape === "radial"
+          ? (command.healthBand === "high" ? 2 : command.healthBand === "mid" ? 4 : 6) + command.armCountBonus
+          : 3;
         if (command.shape === "focused") {
-          this.fireAuthoredLineStrike({
-            kind: "authored-line-strike",
-            style: "grave-sword-rise",
-            origin: "player",
-            aimMode: "strongest",
-            damage: strikeDamage * 1.16,
-            width: Math.max(12, radius * 0.42),
-            length: radius * 2.5,
-            sourceGongfaId: command.sourceGongfaId
-          });
+          const target = activeEnemies
+            .filter((enemy) => Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.x, enemy.y) <= radius * 2.5)
+            .sort((a, b) => b.maxHealth - a.maxHealth)[0];
+          if (target) hitTargets = [target];
+          const line = this.applyGongfaEffectVisualHierarchy(this.add.graphics(), command.sourceGongfaId).setDepth(12);
+          line.lineStyle(finisher ? 12 : 7, finisher ? identity.secondary : identity.accent, 0.9);
+          if (target) line.lineBetween(this.player.x, this.player.y, target.x, target.y);
+          this.tweens.add({ targets: line, alpha: 0, duration: 220, onComplete: () => line.destroy() });
         } else {
           if (command.shape === "pursuit") {
-            const target = (this.enemies.getChildren() as Enemy[])
-              .filter((enemy) => enemy.active)
+            const ordinary = activeEnemies.filter((enemy) => enemy.role !== "tribulation-boss" && enemy.maxHealth < 150);
+            const target = (ordinary.length > 0 ? ordinary : activeEnemies)
               .sort((a, b) => a.health - b.health)[0];
-            if (target) {
+            if (target && ordinary.length > 0) {
               const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
               const distance = Math.min(18, Phaser.Math.Distance.Between(this.player.x, this.player.y, target.x, target.y));
               this.player.setPosition(
@@ -2910,8 +2930,28 @@ export class GameScene extends Phaser.Scene {
                 this.player.y + Math.sin(angle) * distance
               );
             }
+            if (target && Phaser.Math.Distance.Between(this.player.x, this.player.y, target.x, target.y) <= radius + 12) {
+              hitTargets = [target];
+            }
+          } else {
+            const radialCandidates = activeEnemies.filter((enemy) =>
+              Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.x, enemy.y) <= radius
+            );
+            if (command.splitAcrossArms) {
+              const selectedByArm = new Map<number, Enemy>();
+              for (const enemy of radialCandidates) {
+                const angle = Phaser.Math.Angle.Normalize(
+                  Phaser.Math.Angle.Between(this.player.x, this.player.y, enemy.x, enemy.y) - strike * 0.32
+                );
+                const arm = Math.round(angle / (Math.PI * 2) * armCount) % armCount;
+                const selected = selectedByArm.get(arm);
+                if (!selected || enemy.health > selected.health) selectedByArm.set(arm, enemy);
+              }
+              hitTargets = [...selectedByArm.values()];
+            } else {
+              hitTargets = radialCandidates;
+            }
           }
-          const armCount = command.shape === "radial" ? 6 : 3;
           const arcs = this.applyGongfaEffectVisualHierarchy(
             this.add.graphics(),
             command.sourceGongfaId
@@ -2924,28 +2964,102 @@ export class GameScene extends Phaser.Scene {
             arcs.strokePath();
           }
           this.tweens.add({ targets: arcs, alpha: 0, scale: 1.08, duration: 200, onComplete: () => arcs.destroy() });
-          this.damageEnemiesWithin(this.player.x, this.player.y, radius, strikeDamage, command.sourceGongfaId);
+        }
+        for (const enemy of hitTargets) {
+          const bossScale = enemy.role === "tribulation-boss" ? command.bossDamageScale : 1;
+          const wasOrdinary = enemy.role !== "tribulation-boss" && enemy.maxHealth < 150;
+          if (enemy.receiveDamage(strikeDamage * (command.shape === "focused" ? 1.16 : 1) * bossScale)) {
+            if (wasOrdinary) killedOrdinary = true;
+            this.resolveEnemyDeath(enemy);
+          }
         }
         if (finisher && combinationStayedValid) {
-          if (command.refundFraction > 0) this.player.heal(totalHealthBurned * command.refundFraction);
-          if (command.asuraChoice && !command.asuraActive && this.player.stats.health / this.player.stats.maxHealth < 0.2) {
+          const fullFinishLanded = hitTargets.length > 0;
+          const finishHealthRatio = this.player.stats.health / this.player.stats.maxHealth;
+          if (fullFinishLanded && command.refundFraction > 0) {
+            this.healFromGongfa(totalHealthBurned * command.refundFraction);
+          }
+          if (fullFinishLanded && command.asuraChoice && !command.asuraActive && finishHealthRatio < 0.2) {
             const runtime = this.learnedGongfaRuntimes.find((candidate) => candidate.gongfaId === command.sourceGongfaId);
             if (runtime) {
-              runtime.authored.phase = 1;
-              runtime.authored.activationCount += 1;
+              const result = advanceGongfaRuntime(runtime, {
+                kind: "authored-asura-transform",
+                healthRatio: finishHealthRatio,
+                learnedMasteryIds: runtime.mastery.masteryLearnedIds
+              });
+              this.adoptPrimaryRuntime(result.runtime);
+              this.executeGongfaRuntimeCommands(result.commands, result.runtime);
+              this.restorePrimaryRuntimeAdapter();
             }
-            const ceiling = command.asuraChoice === "undying-asura"
-              ? 0.3
-              : command.asuraChoice === "world-burning-asura"
-                ? 0.15
-                : 0.25;
-            this.player.lockRecoveryCeiling(ceiling);
+          }
+          if (
+            fullFinishLanded && killedOrdinary && command.asuraChoice === "life-hunting-asura" &&
+            command.asuraActive && command.continuationsRemaining > 0 &&
+            (this.enemies.getChildren() as Enemy[]).some((enemy) =>
+              enemy.active && enemy.role !== "tribulation-boss" && enemy.maxHealth < 150
+            )
+          ) {
+            this.fireAuthoredBloodCombination({
+              ...command,
+              continuationsRemaining: command.continuationsRemaining - 1
+            });
           }
         }
         this.recordGongfaMotif(`${identity.motifId}:blood-combination:${command.shape}`);
         this.publishHud(this.lastMessage);
       });
     }
+  }
+
+  private presentAuthoredAsuraTransformation(
+    command: Extract<GongfaRuntimeCommand, { kind: "authored-asura-transformation" }>
+  ): void {
+    this.player.lockRecoveryCeiling(command.recoveryCeiling);
+    const identity = getGongfaVisualIdentity(command.sourceGongfaId);
+    const form = this.applyGongfaEffectVisualHierarchy(this.add.graphics(), command.sourceGongfaId).setDepth(18);
+    form.fillStyle(identity.accent, 0.28);
+    form.fillCircle(this.player.x, this.player.y, command.choice === "world-burning-asura" ? 112 : 82);
+    form.lineStyle(9, identity.secondary, 0.94);
+    form.strokeCircle(this.player.x, this.player.y, command.choice === "world-burning-asura" ? 112 : 82);
+    for (let horn = -1; horn <= 1; horn += 2) {
+      form.lineBetween(this.player.x + horn * 12, this.player.y - 20, this.player.x + horn * 48, this.player.y - 88);
+    }
+    this.tweens.add({ targets: form, alpha: 0, scale: 1.22, duration: 1100, onComplete: () => form.destroy() });
+    this.recordGongfaMotif(`${identity.motifId}:asura-heart-${command.choice}`);
+  }
+
+  private syncAsuraBodyMarker(runtime: GongfaRuntime): void {
+    if (runtime.authored.phase !== 1) {
+      this.asuraBodyMarker?.destroy();
+      this.asuraBodyMarker = undefined;
+      return;
+    }
+    const identity = getGongfaVisualIdentity(runtime.gongfaId);
+    const marker = this.asuraBodyMarker ?? this.add.graphics().setDepth(14);
+    this.asuraBodyMarker = marker;
+    marker.clear();
+    const learned = runtime.mastery.masteryLearnedIds;
+    const worldBurning = learned.includes("world-burning-asura");
+    const undying = learned.includes("undying-asura");
+    this.player.lockRecoveryCeiling(undying ? 0.3 : worldBurning ? 0.15 : 0.25);
+    const radius = worldBurning ? 58 : undying ? 38 : 46;
+    marker.fillStyle(identity.accent, worldBurning ? 0.24 : 0.14);
+    marker.fillCircle(0, 0, radius);
+    marker.lineStyle(worldBurning ? 7 : 5, identity.secondary, 0.9);
+    marker.strokeCircle(0, 0, radius);
+    marker.lineBetween(-11, -18, -38, -66);
+    marker.lineBetween(11, -18, 38, -66);
+    const arms = worldBurning ? 6 : undying ? 2 : 4;
+    for (let arm = 0; arm < arms; arm += 1) {
+      const angle = arm / arms * Math.PI * 2;
+      marker.lineStyle(worldBurning ? 7 : 4, arm % 2 ? identity.secondary : identity.accent, 0.78);
+      marker.lineBetween(Math.cos(angle) * 14, Math.sin(angle) * 14, Math.cos(angle) * radius * 1.35, Math.sin(angle) * radius * 1.35);
+    }
+    if (undying) {
+      marker.lineStyle(5, identity.secondary, 0.7);
+      marker.strokeCircle(0, 0, radius + 10);
+    }
+    marker.setPosition(this.player.x, this.player.y);
   }
 
   private presentColdDebtSeals(
@@ -3932,7 +4046,7 @@ export class GameScene extends Phaser.Scene {
         this.activeBossHazards.delete(hazard);
       }
     }
-    if (command.heal > 0) this.player.heal(command.heal);
+    if (command.heal > 0) this.healFromGongfa(command.heal);
     if (command.heal > 0) {
       const healFraction = Math.min(0.3, command.heal * 0.015);
       for (const runtime of this.learnedGongfaRuntimes) {
@@ -4393,7 +4507,7 @@ export class GameScene extends Phaser.Scene {
           if (command.payoff === "bind") enemy.applySlow(0.12, 900 + command.power * 320);
           if (enemy.receiveDamage(command.damage * (pulse > 0 ? 0.62 : 1))) this.resolveEnemyDeath(enemy);
         }
-        if (command.payoff === "bind" && hitCount > 0) this.player.heal(Math.max(1, command.power * 1.5));
+        if (command.payoff === "bind" && hitCount > 0) this.healFromGongfa(Math.max(1, command.power * 1.5));
         if (command.clearProjectiles) {
           for (const hazard of [...this.activeBossHazards]) {
             if (Phaser.Math.Distance.Between(hazard.x, hazard.y, cx, cy) > radius) continue;
@@ -4702,6 +4816,14 @@ export class GameScene extends Phaser.Scene {
       }
       if (enemy.receiveDamage(damage)) this.resolveEnemyDeath(enemy);
     }
+  }
+
+  private healFromGongfa(amount: number): void {
+    const lifeFlameForbidsLeech = this.learnedGongfaRuntimes.some((runtime) =>
+      runtime.gongfaId === "flame-demon-body-art" &&
+      runtime.mastery.masteryLearnedIds.includes("life-flame-without-return")
+    );
+    if (!lifeFlameForbidsLeech) this.player.heal(amount);
   }
 
   private beginSkill2Activation(): number {

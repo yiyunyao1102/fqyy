@@ -468,11 +468,11 @@ const missingStartingFamilies: Array<readonly [GongfaId, FamilySeed[]]> = [
   ]],
   ["flame-demon-body-art", [
     ["demon-fist-tempering", "Demon-Fist Tempering", "Furnace-Blood blows strike harder.", "skill1Damage", 7, "Skill 1: Furnace-Blood Combination"],
-    ["linked-demon-fists", "Linked Demon Fists", "Adds another close blow.", "skill1Count", 1, "Skill 1: Furnace-Blood Combination"],
-    ["wrath-conduction", "Wrath Conduction", "Wrath empowers both body-art Skills.", "gongfaDamageSynergy", 3, "Owning Gongfa: both Skills"],
-    ["wider-bloodcrater", "Wider Bloodcrater", "Body-art strikes reach farther.", "gongfaRangeSynergy", 10, "Owning Gongfa: both Skills"],
-    ["rising-wrath", "Rising Wrath", "Close hits build Wrath faster.", "surgeBuild", 0.18, "Passive: Demon-Heart Reprisal"],
-    ["banked-wrath", "Banked Wrath", "Wrath fades more slowly.", "surgeStability", 0.84, "Passive: Demon-Heart Reprisal"]
+    ["linked-demon-fists", "Dense Furnace Forms", "Adds one more visible arm to multi-direction body forms; health costs are unchanged.", "skill1Count", 1, "Skill 1: Furnace-Blood Combination"],
+    ["wrath-conduction", "Blood-Furnace Conduction", "Strengthens both human and irreversible Asura combinations.", "gongfaDamageSynergy", 3, "Owning Gongfa: both Skills"],
+    ["wider-bloodcrater", "Long Furnace Reach", "Expands every close body arc by 10 without changing pursuit distance.", "gongfaRangeSynergy", 10, "Skill 1: Furnace-Blood Combination"],
+    ["rising-wrath", "Hardened Blood Channels", "Missing-health form power rises 18% more strongly.", "surgeBuild", 0.18, "Passive: Missing-Health Forms"],
+    ["banked-wrath", "Steady Furnace Pulse", "The delay between paid strikes is 16% shorter, reducing exposure but not cost.", "surgeStability", 0.84, "Skill 1: Furnace-Blood Combination"]
   ]],
   ["vermilion-bird-covenant", [
     ["ember-spirit-tempering", "Ember-Spirit Tempering", "Ember birds scorch harder.", "skill1Damage", 4, "Skill 1: Ember-Bird Brood"],

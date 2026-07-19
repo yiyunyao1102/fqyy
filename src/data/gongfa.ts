@@ -480,12 +480,12 @@ export const gongfaConfigs: Record<GongfaId, GongfaConfig> = {
   },
   "flame-demon-body-art": {
     id: "flame-demon-body-art", name: "Flame-Demon Body Art", requiredRoots: ["fire"], pattern: "melee", title: "Flame-Demon Body Art",
-    lore: "Burn life into close violence, answering every wound with a furnace-blood counterstroke.", projectileTexture: "aura-blade", tint: 0xff663f,
+    lore: "Burn current life to extend a close combination, revealing stronger demon forms as recovery becomes more dangerous.", projectileTexture: "aura-blade", tint: 0xff663f,
     stages: {
-      lianqi: { damage: 26, cooldownMs: 1150, count: 2, pierce: 0, projectileSpeed: 0, projectileLifetimeMs: 190, spreadDeg: 105, auraRadius: 98, retaliationDamage: 8, range: 0, returnShots: 0, shellBursts: 0 },
-      zhuji: { damage: 35, cooldownMs: 1000, count: 3, pierce: 0, projectileSpeed: 0, projectileLifetimeMs: 170, spreadDeg: 125, auraRadius: 114, retaliationDamage: 13, range: 0, returnShots: 0, shellBursts: 0 },
-      jindan: { damage: 47, cooldownMs: 860, count: 3, pierce: 0, projectileSpeed: 0, projectileLifetimeMs: 150, spreadDeg: 150, auraRadius: 132, retaliationDamage: 20, range: 0, returnShots: 1, shellBursts: 0 },
-      yuanying: { damage: 62, cooldownMs: 750, count: 4, pierce: 0, projectileSpeed: 0, projectileLifetimeMs: 130, spreadDeg: 175, auraRadius: 150, retaliationDamage: 30, range: 0, returnShots: 1, shellBursts: 0 }
+      lianqi: { damage: 26, cooldownMs: 1150, count: 2, pierce: 0, projectileSpeed: 0, projectileLifetimeMs: 190, spreadDeg: 105, auraRadius: 98, retaliationDamage: 0, range: 0, returnShots: 0, shellBursts: 0 },
+      zhuji: { damage: 35, cooldownMs: 1000, count: 3, pierce: 0, projectileSpeed: 0, projectileLifetimeMs: 170, spreadDeg: 125, auraRadius: 114, retaliationDamage: 0, range: 0, returnShots: 0, shellBursts: 0 },
+      jindan: { damage: 47, cooldownMs: 860, count: 3, pierce: 0, projectileSpeed: 0, projectileLifetimeMs: 150, spreadDeg: 150, auraRadius: 132, retaliationDamage: 0, range: 0, returnShots: 1, shellBursts: 0 },
+      yuanying: { damage: 62, cooldownMs: 750, count: 4, pierce: 0, projectileSpeed: 0, projectileLifetimeMs: 130, spreadDeg: 175, auraRadius: 150, retaliationDamage: 0, range: 0, returnShots: 1, shellBursts: 0 }
     }
   },
   "vermilion-bird-covenant": {

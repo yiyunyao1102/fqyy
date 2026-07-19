@@ -115,7 +115,7 @@ const runtimeSubtypeByGongfa: Record<GongfaId, RuntimeSubtype | undefined> = {
   "mist-wraith-canon": "surge",
   "heavenfall-body-art": "surge",
   "thousand-root-formation": "surge",
-  "flame-demon-body-art": "surge",
+  "flame-demon-body-art": undefined,
   "vermilion-bird-covenant": "surge",
   "frozen-river-formation": "surge",
   "moonfall-tide-ritual": "surge",
@@ -133,9 +133,9 @@ function isRuntimeSubtypeState(runtime: Record<string, unknown>, gongfaId: Gongf
   const expectedSubtype = runtimeSubtypeByGongfa[gongfaId];
   const presentSubtypes = (Object.keys(subtypeNumberFields) as RuntimeSubtype[])
     .filter((subtype) => runtime[subtype] !== undefined);
-  // Ice Mirror used the shared Surge subtype before its finite-facet redesign.
-  // Accept that legacy payload for migration while new checkpoints carry no subtype.
-  if (["ice-mirror-guard", "ironwood-wave-form"].includes(gongfaId) && presentSubtypes.length === 1 && presentSubtypes[0] === "surge") {
+  // These Gongfa used the shared Surge subtype before their authored redesigns.
+  // Accept legacy payloads for migration while new checkpoints carry no subtype.
+  if (["ice-mirror-guard", "ironwood-wave-form", "flame-demon-body-art"].includes(gongfaId) && presentSubtypes.length === 1 && presentSubtypes[0] === "surge") {
     return hasNonNegativeFields(runtime.surge, subtypeNumberFields.surge);
   }
   if (expectedSubtype === undefined) return presentSubtypes.length === 0;

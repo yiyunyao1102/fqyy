@@ -46,7 +46,7 @@ implementation, testing, balance review, and future regression checks.
 | Heavenfall Body Art / 天坠锻体术 | Yuling | Approved | Implemented and verified |
 | Myriad Beast Grove / 万兽灵林 | Yuling | Approved | Implemented and verified |
 | Ancient Tree Body Art / 古木锻体术 | Yuling | Approved | Implemented and verified |
-| Flame-Demon Body Art / 炎魔锻体术 | Youxuan | Approved | Pending redesign |
+| Flame-Demon Body Art / 炎魔锻体术 | Youxuan | Approved | Implemented and verified |
 | Mist Wraith Canon / 雾灵真典 | Youxuan | Approved | Pending redesign |
 | Frozen River Formation / 冰河伏阵 | Youxuan | Approved | Pending redesign |
 | Sword-Burial Formation / 葬剑伏阵 | Youxuan | Approved | Pending redesign |
@@ -1149,6 +1149,35 @@ until victory or death. Healing never restores human form.
 
 **Must not become:** Heavenfall's temporary movement form, Burning Ring's proximity
 Heat, Gengjin damage storage, Furnace Sword embeds, or a generic low-health damage buff.
+
+### Implemented tuning contract
+
+- Human form has four health-band presentations. Above `70%` it uses the free opener
+  and first paid short strike; `40–70%` reveals a four-arm side-claw step; below `40%`
+  reveals the full four-step Furnace-Heart finish; below `20%` reveals the demon body
+  and makes Asura Heart eligible. Permanent Asura always retains the full four steps.
+- Paid steps remove `6%`, `8%`, then `10%` of current health immediately before their
+  strikes and cannot reduce health below one. Leaving the close-combat envelope,
+  losing every eligible target, or Evading cancels all later steps and returns none
+  of the health already burned.
+- One Horn selects only the strongest close target and uses a narrow body line. Six
+  Arms renders and resolves the multi-direction body form at `62%` per-target power.
+  Hungry Ghost prefers the weakest ordinary target, advances only `18` world units per
+  step, and uses `55%` boss damage rather than locking onto a boss.
+- Meridian Lock halves all three costs and missing-health scaling. Blood Debt refunds
+  `70%` of that combination's burn only after its final direct strike lands. Life-Flame
+  multiplies costs and missing-health power by `1.5` and suppresses player healing from
+  every Gongfa while leaving pills, treasures, and non-Gongfa recovery intact.
+- Generic or direct Skill-2 events cannot transform the player. A landed full finish
+  below `20%` sends an authored result back to the runtime; only a ready Rank-10 Asura
+  Heart with an R9 law then records its cast and irreversibly enters Asura form.
+- Undying locks recoverable health at `30%`, lowers damage to `84%`, and has the
+  strongest finish refund. World-Burning locks at `15%`, removes leech, expands reach
+  by `1.5×`, and raises damage by `1.55×`. Life-Hunting locks at `25%`, uses `35%` boss
+  damage, and may begin up to three new fully paid combinations after ordinary kills.
+- The HUD exposes the current health form or permanent Asura law. A persistent horned
+  body marker follows the player after transformation, with shield-ring, six-arm, and
+  hunting silhouettes kept distinct for the three laws.
 
 ---
 

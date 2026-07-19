@@ -146,10 +146,10 @@ export const gongfaPackageCatalog: Record<GongfaId, GongfaPackageDefinition> = {
     skill2: { id: "myriad-root-killing-field", name: "Myriad Roots Share One Ancestor", description: "Erupts at least four infections, crawls across their host-defined routes, then merges them once into a Root Mother.", tags: ["ailment", "wood", "summon"] }
   },
   "flame-demon-body-art": {
-    combatRole: "An aggressive close-range brawler that turns repeated contact into a crushing fiery finisher.", visualMotif: "Blood-red furnace fists, horned flame arcs, and scorched impact rings.",
-    skill1: { id: "furnace-blood-combination", name: "Furnace-Blood Combination", description: "Chains close fiery blows into a broad finishing smash that ignites survivors.", tags: ["melee", "fire", "ailment"] },
-    passive: { name: "Demon-Heart Reprisal", resource: "Wrath", description: "Melee hits and returned contact force build Wrath, empowering the next combination." },
-    skill2: { id: "asura-conflagration", name: "Asura Conflagration", description: "Assumes an asura stance and unleashes a furious sequence of point-blank detonating strikes.", tags: ["melee", "fire", "explosive", "reflect"] }
+    combatRole: "A close brawler who chooses whether to finish a current-health-burning combination as missing health changes its body and reach.", visualMotif: "Escalating blood-cost numbers, furnace claws and heart strike, then one persistent horned Asura body.",
+    skill1: { id: "furnace-blood-combination", name: "Furnace-Blood Combination", description: "A free opener may extend for 6%, 8%, then 10% of current health; leaving melee or Evading ends it without refund.", tags: ["melee", "fire", "ailment"] },
+    passive: { name: "Missing-Health Forms", resource: "Health Bands", description: "Lower health reveals a side claw, Furnace-Heart finisher, and finally the full demon body; hits build no meter." },
+    skill2: { id: "asura-conflagration", name: "Asura Heart", description: "Below 20% health, a landed full combination irreversibly assumes the selected Asura law and locks recoverable health.", tags: ["melee", "fire", "explosive", "defensive"] }
   },
   "vermilion-bird-covenant": {
     combatRole: "A companion keeper who guides one vulnerable bird through dangerous dives and safe returns.", visualMotif: "One persistent vermilion silhouette, outbound feather routes, a health ring, and one physical egg.",

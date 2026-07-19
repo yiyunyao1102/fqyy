@@ -261,6 +261,7 @@ export type GongfaRuntimeEvent =
       embedPower: number;
     }
   | { kind: "yujian-reversal-spawned" }
+  | { kind: "authored-asura-transform"; healthRatio: number; learnedMasteryIds?: string[] }
   | {
       kind: "skill2";
       skill2Id?: string;
@@ -560,8 +561,20 @@ export type GongfaRuntimeCommand =
       refundFraction: number;
       asuraChoice?: "undying-asura" | "world-burning-asura" | "life-hunting-asura";
       asuraActive: boolean;
+      healthBand: "high" | "mid" | "low" | "critical";
+      bossDamageScale: number;
+      continuationsRemaining: number;
+      armCountBonus: number;
+      splitAcrossArms: boolean;
       sourceGongfaId: GongfaId;
       masteryCast?: MasterySkill2Cast;
+    }
+  | {
+      kind: "authored-asura-transformation";
+      choice: "undying-asura" | "world-burning-asura" | "life-hunting-asura";
+      recoveryCeiling: number;
+      sourceGongfaId: GongfaId;
+      masteryCast: MasterySkill2Cast;
     }
   | {
       kind: "authored-cold-debt-placement";
@@ -2045,7 +2058,7 @@ export function createGongfaRuntime(input: CreateGongfaRuntimeInput): GongfaRunt
         ? { ...blazingFeatherDefaults, ...input.blazingFeather }
         : undefined,
     surge: surgeGongfaIdSet.has(input.gongfaId) &&
-      !["verdant-ring-scripture", "ice-mirror-guard", "ironwood-wave-form"].includes(input.gongfaId)
+      !["verdant-ring-scripture", "ice-mirror-guard", "ironwood-wave-form", "flame-demon-body-art"].includes(input.gongfaId)
       ? { ...surgeDefaults, ...input.surge }
       : undefined,
     authored: {
@@ -3251,6 +3264,12 @@ function advanceAuthoredWorldFacts(
   if (runtime.gongfaId === "flame-demon-body-art") {
     state.secondaryResource = Math.max(0, Math.min(1, event.healthRatio ?? 1));
     state.resource = 1 - state.secondaryResource;
+    if (runtime.mastery.masterySkill2Id) {
+      runtime.mastery.masterySkill2CooldownRemaining = Math.max(
+        0,
+        runtime.mastery.masterySkill2CooldownRemaining - event.deltaMs
+      );
+    }
   }
   if (event.isMoving) {
     state.continuousMovementMs += event.deltaMs;
@@ -4346,6 +4365,7 @@ export function advanceGongfaRuntime(
     runtime.gongfaId !== "verdant-ring-scripture" &&
     runtime.gongfaId !== "ice-mirror-guard" &&
     runtime.gongfaId !== "ironwood-wave-form" &&
+    runtime.gongfaId !== "flame-demon-body-art" &&
     event.kind !== "skill2"
   ) {
     return { runtime, commands: [] };
@@ -4358,6 +4378,39 @@ export function advanceGongfaRuntime(
     return { runtime: next, commands };
   }
 
+  if (event.kind === "authored-asura-transform") {
+    if (
+      next.gongfaId === "flame-demon-body-art" &&
+      next.authored.phase === 0 &&
+      event.healthRatio < 0.2 &&
+      next.mastery.masterySkill2Id === "asura-conflagration" &&
+      next.mastery.masterySkill2CooldownRemaining === 0
+    ) {
+      const choice = event.learnedMasteryIds.includes("undying-asura")
+        ? "undying-asura" as const
+        : event.learnedMasteryIds.includes("world-burning-asura")
+          ? "world-burning-asura" as const
+          : event.learnedMasteryIds.includes("life-hunting-asura")
+            ? "life-hunting-asura" as const
+            : undefined;
+      if (choice) {
+        const skill2Stats = skill2RefinementStats(next);
+        const cooldownMs = Math.floor(authoredSkill2Plans["asura-conflagration"].cooldownMs * skill2Stats.cadenceScale);
+        next.authored.phase = 1;
+        next.authored.activationCount += 1;
+        next.mastery.masterySkill2CooldownRemaining = cooldownMs;
+        commands.push({
+          kind: "authored-asura-transformation",
+          choice,
+          recoveryCeiling: choice === "undying-asura" ? 0.3 : choice === "world-burning-asura" ? 0.15 : 0.25,
+          sourceGongfaId: next.gongfaId,
+          masteryCast: { skill2Id: "asura-conflagration", cooldownMs }
+        });
+      }
+    }
+    return { runtime: next, commands };
+  }
+
   if (
     event.kind === "tick" &&
     event.skill2Enabled !== false &&
@@ -4365,7 +4418,8 @@ export function advanceGongfaRuntime(
     next.gongfaId !== "ironwood-wave-form" &&
     next.gongfaId !== "crimson-furnace-sword-art" &&
     next.gongfaId !== "heavenfall-body-art" &&
-    next.gongfaId !== "ancient-tree-body-art"
+    next.gongfaId !== "ancient-tree-body-art" &&
+    next.gongfaId !== "flame-demon-body-art"
   ) {
     const cooldown = advanceTimedMasterySkill2Cooldown(
       next.mastery.masterySkill2Id,
@@ -4638,6 +4692,10 @@ export function advanceGongfaRuntime(
     if (event.skill2Id === "world-tree-incarnation" && next.gongfaId === "ancient-tree-body-art") {
       // World Tree is earned by remaining rooted at full rings. A generic timed
       // Skill 2 event must not bypass the visible hold or its immobility cost.
+      return { runtime: next, commands };
+    }
+    if (event.skill2Id === "asura-conflagration" && next.gongfaId === "flame-demon-body-art") {
+      // Asura Heart is earned only when the low-health full combination lands.
       return { runtime: next, commands };
     }
     if (event.skill2Id === "myriad-beast-stampede" && next.gongfaId === "myriad-beast-grove") {
@@ -5955,7 +6013,6 @@ export function planGongfaAttack(
   }
   if (runtime.gongfaId === "flame-demon-body-art") {
     const healthRatio = runtime.authored.secondaryResource || 1;
-    const strikeCount = healthRatio > 0.7 ? 2 : healthRatio > 0.4 ? 3 : 4;
     const learnedIds = options.learnedMasteryIds ?? [];
     const shape = learnedIds.includes("one-horn-army-breaker")
       ? "focused" as const
@@ -5969,16 +6026,25 @@ export function planGongfaAttack(
         : 1;
     const missingHealthScale = 1 + (1 - healthRatio) *
       (learnedIds.includes("meridian-locking-heart-guard") ? 0.25 : 0.5) *
-      (learnedIds.includes("life-flame-without-return") ? 1.5 : 1);
+      (learnedIds.includes("life-flame-without-return") ? 1.5 : 1) *
+      (1 + masteryEffectTiers(learnedIds, "surgeBuild") * 0.18);
     const asuraChoice = (["undying-asura", "world-burning-asura", "life-hunting-asura"] as const)
       .find((id) => learnedIds.includes(id));
     const asuraActive = runtime.authored.phase === 1;
+    const healthBand = asuraActive || healthRatio < 0.2
+      ? "critical" as const
+      : healthRatio < 0.4
+        ? "low" as const
+        : healthRatio < 0.7
+          ? "mid" as const
+          : "high" as const;
+    const strikeCount = asuraActive ? 4 : healthBand === "high" ? 2 : healthBand === "mid" ? 3 : 4;
     const asuraDamageScale = !asuraActive
       ? 1
       : asuraChoice === "undying-asura"
         ? 0.84
         : asuraChoice === "world-burning-asura"
-          ? 1.35
+          ? 1.55
           : 1.08;
     const asuraRadiusScale = asuraActive && asuraChoice === "world-burning-asura" ? 1.5 : 1;
     const refundFraction = learnedIds.includes("blood-debt-repaid-at-the-end")
@@ -5992,15 +6058,24 @@ export function planGongfaAttack(
     return [{
       kind: "authored-blood-combination",
       strikeCount,
-      damage: Math.max(1, Math.floor(runtime.combat.damage * missingHealthScale * asuraDamageScale)),
+      damage: Math.max(1, Math.floor(runtime.combat.damage * missingHealthScale * asuraDamageScale *
+        (learnedIds.includes("six-armed-yaksha") ? 0.62 : shape === "pursuit" ? 0.82 : 1))),
       radius: runtime.combat.auraRadius *
         (shape === "focused" ? 0.62 : shape === "radial" ? 1.08 : 0.82) * asuraRadiusScale,
-      staggerMs: Math.max(100, runtime.combat.projectileLifetimeMs),
+      staggerMs: Math.max(85, runtime.combat.projectileLifetimeMs *
+        Math.pow(0.84, masteryEffectTiers(learnedIds, "surgeStability"))),
       healthCostFractions: [0, 0.06 * costScale, 0.08 * costScale, 0.1 * costScale],
       shape,
       refundFraction,
       ...(asuraChoice ? { asuraChoice } : {}),
       asuraActive,
+      healthBand,
+      bossDamageScale: shape === "pursuit"
+        ? asuraActive && asuraChoice === "life-hunting-asura" ? 0.35 : 0.55
+        : 1,
+      continuationsRemaining: asuraActive && asuraChoice === "life-hunting-asura" ? 3 : 0,
+      armCountBonus: runtime.skill1Refinements?.countBonus ?? 0,
+      splitAcrossArms: learnedIds.includes("six-armed-yaksha"),
       sourceGongfaId: runtime.gongfaId
     }];
   }

@@ -210,6 +210,52 @@ describe("approved Gongfa mechanic contracts", () => {
     }
   });
 
+  it("allows Asura Heart only after a critical full-combination result", () => {
+    const runtime = createGongfaRuntime({ gongfaId: "flame-demon-body-art" });
+    runtime.mastery.masterySkill2Id = "asura-conflagration";
+    runtime.mastery.masterySkill2CooldownRemaining = 0;
+    runtime.mastery.masteryLearnedIds = ["undying-asura"];
+    const bypass = advanceGongfaRuntime(runtime, {
+      kind: "skill2", skill2Id: "asura-conflagration",
+      eligibleTargetCount: 2, learnedMasteryIds: ["undying-asura"]
+    });
+    expect(bypass.runtime.authored.phase).toBe(0);
+    expect(bypass.commands).toHaveLength(0);
+    const tooHealthy = advanceGongfaRuntime(runtime, {
+      kind: "authored-asura-transform", healthRatio: 0.2,
+      learnedMasteryIds: ["undying-asura"]
+    });
+    expect(tooHealthy.runtime.authored.phase).toBe(0);
+    const transformed = advanceGongfaRuntime(runtime, {
+      kind: "authored-asura-transform", healthRatio: 0.19,
+      learnedMasteryIds: ["undying-asura"]
+    });
+    expect(transformed.runtime.authored.phase).toBe(1);
+    expect(transformed.commands[0]).toMatchObject({
+      kind: "authored-asura-transformation",
+      choice: "undying-asura",
+      recoveryCeiling: 0.3,
+      masteryCast: { skill2Id: "asura-conflagration" }
+    });
+  });
+
+  it("keeps Life-Hunting Asura on a full costly chain with weak boss damage", () => {
+    const runtime = createGongfaRuntime({ gongfaId: "flame-demon-body-art" });
+    runtime.authored.phase = 1;
+    runtime.authored.secondaryResource = 0.3;
+    const command = planGongfaAttack(runtime, 0, {
+      learnedMasteryIds: ["hungry-ghost-soul-pursuit", "life-hunting-asura"]
+    })[0];
+    expect(command).toMatchObject({
+      kind: "authored-blood-combination",
+      strikeCount: 4,
+      healthBand: "critical",
+      shape: "pursuit",
+      bossDamageScale: 0.35,
+      continuationsRemaining: 3
+    });
+  });
+
   it("places harmless Cold-Debt seals and transfers one debt across a foreign seal", () => {
     let runtime = createGongfaRuntime({ gongfaId: "frozen-river-formation" });
     const [placement] = planGongfaAttack(runtime, 0, {
