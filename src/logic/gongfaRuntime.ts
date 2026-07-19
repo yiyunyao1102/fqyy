@@ -210,7 +210,7 @@ export type GongfaRuntimeEvent =
   | { kind: "blazing-feather-hit"; learnedMasteryIds?: string[] }
   | { kind: "surge-hit"; learnedMasteryIds?: string[] }
   | { kind: "gengjin-defensive-hit"; learnedMasteryIds?: string[] }
-  | { kind: "evade"; learnedMasteryIds?: string[] }
+  | { kind: "evade"; playerX?: number; playerY?: number; learnedMasteryIds?: string[] }
   | {
       kind: "yujian-projectile-hit";
       targetId: number;
@@ -490,6 +490,7 @@ export type GongfaRuntimeCommand =
       angleOffset?: number;
       slowMultiplier?: number;
       slowDurationMs?: number;
+      maxHits?: number;
       masteryCast?: MasterySkill2Cast;
     }
   | {
@@ -2039,6 +2040,9 @@ function advanceAuthoredWorldFacts(
   commands: GongfaRuntimeCommand[]
 ): void {
   const state = runtime.authored;
+  const learnedIds = "learnedMasteryIds" in event
+    ? event.learnedMasteryIds ?? runtime.mastery.masteryLearnedIds
+    : runtime.mastery.masteryLearnedIds;
 
   if (event.kind === "enemy-death") {
     if (runtime.gongfaId === "mist-wraith-canon") {
@@ -2060,11 +2064,21 @@ function advanceAuthoredWorldFacts(
       const angle = velocityMagnitude > 1
         ? Math.atan2(event.velocityY, event.velocityX)
         : Math.atan2(event.y - event.playerY, event.x - event.playerX);
+      const isolated = !state.anchors.some((anchor) =>
+        anchor.kind === "grave-sword" && distanceSquared(anchor.x, anchor.y, event.x, event.y) <= 120 * 120
+      );
+      const graveValue = learnedIds.includes("lone-grave-great-que")
+        ? isolated ? 1.7 : 0.7
+        : learnedIds.includes("collective-burial-sword-mound")
+          ? 0.72
+          : learnedIds.includes("field-path-sword-forest")
+            ? 0.65
+            : 1;
       state.anchors.push({
         kind: "grave-sword",
         x: event.x,
         y: event.y,
-        value: 1,
+        value: graveValue,
         angle,
         originPlayerX: event.playerX,
         originPlayerY: event.playerY,
@@ -2072,6 +2086,27 @@ function advanceAuthoredWorldFacts(
       });
       state.anchors = state.anchors.filter((anchor) => anchor.kind === "grave-sword").slice(-state.maxCharges);
       state.charges = state.anchors.length;
+    }
+    return;
+  }
+
+  if (
+    event.kind === "evade" && runtime.gongfaId === "sword-burial-formation" &&
+    learnedIds.includes("seal-grave-treading-stars")
+  ) {
+    const playerX = event.playerX ?? 0;
+    const playerY = event.playerY ?? 0;
+    const sealedCount = state.anchors.filter((anchor) => anchor.kind === "grave-sword" && anchor.sealed).length;
+    if (sealedCount < 6) {
+      const nearest = state.anchors
+        .filter((anchor) => anchor.kind === "grave-sword" && !anchor.sealed)
+        .sort((a, b) =>
+          distanceSquared(a.x, a.y, playerX, playerY) - distanceSquared(b.x, b.y, playerX, playerY)
+        )[0];
+      if (nearest && distanceSquared(nearest.x, nearest.y, playerX, playerY) <= 76 ** 2) {
+        nearest.sealed = true;
+        nearest.value *= 1.35;
+      }
     }
     return;
   }
@@ -2102,15 +2137,39 @@ function advanceAuthoredWorldFacts(
   if (runtime.gongfaId === "mist-wraith-canon") {
     const playerX = event.playerX ?? 0;
     const playerY = event.playerY ?? 0;
+    const collectionRadius = learnedIds.includes("long-banner-soul-call")
+      ? 140
+      : learnedIds.includes("tread-corpse-guide-soul")
+        ? 40
+        : 68;
+    const capacity = learnedIds.includes("life-seeking-fierce-wraith")
+      ? Math.min(5, state.maxCharges)
+      : learnedIds.includes("lantern-returning-underworld-attendant")
+        ? state.maxCharges + 3
+        : learnedIds.includes("long-banner-soul-call")
+          ? Math.max(1, state.maxCharges - 2)
+          : state.maxCharges;
     let storedCount = state.anchors.filter((anchor) => anchor.kind === "stored-soul").length;
     for (const anchor of state.anchors) {
+      const inCollectionRange = distanceSquared(anchor.x, anchor.y, playerX, playerY) <= collectionRadius ** 2;
+      const needsVigil = learnedIds.includes("halt-lantern-keep-vigil") && anchor.kind === "corpse-soul";
+      if (needsVigil && inCollectionRange) {
+        const ledgerId = anchor.targetId ?? -1;
+        state.targetLedger[ledgerId] = event.isMoving
+          ? 0
+          : (state.targetLedger[ledgerId] ?? 0) + event.deltaMs;
+        if ((state.targetLedger[ledgerId] ?? 0) < 800) continue;
+        anchor.value += 1;
+      }
       if (
         anchor.kind === "corpse-soul" &&
-        storedCount < state.maxCharges &&
-        distanceSquared(anchor.x, anchor.y, playerX, playerY) <= 68 * 68
+        storedCount < capacity &&
+        inCollectionRange
       ) {
         anchor.kind = "stored-soul";
-        anchor.remainingMs = anchor.value === 3 ? 20_000 : anchor.value === 2 ? 14_000 : 9_000;
+        if (learnedIds.includes("tread-corpse-guide-soul")) anchor.value *= 1.35;
+        anchor.remainingMs = (anchor.value >= 3 ? 20_000 : anchor.value >= 2 ? 14_000 : 9_000) *
+          (learnedIds.includes("tread-corpse-guide-soul") ? 1.5 : 1);
         storedCount += 1;
       }
       if (anchor.kind === "stored-soul") {
@@ -2119,7 +2178,7 @@ function advanceAuthoredWorldFacts(
       }
     }
     state.charges = storedCount;
-    state.resource = storedCount / Math.max(1, state.maxCharges);
+    state.resource = storedCount / Math.max(1, capacity);
   }
 
   if (runtime.gongfaId === "sword-burial-formation") {
@@ -2130,8 +2189,15 @@ function advanceAuthoredWorldFacts(
         retained.push(anchor);
         continue;
       }
+      if (anchor.sealed && learnedIds.includes("seal-grave-treading-stars")) {
+        retained.push(anchor);
+        continue;
+      }
+      const triggerRadius = learnedIds.includes("rise-at-living-presence") ? 72 : 46;
       const trespasser = targets.find(
-        (target) => distanceSquared(anchor.x, anchor.y, target.x, target.y) <= 46 * 46
+        (target) =>
+          (!learnedIds.includes("recognize-calamity-leave-sheath") || target.rank !== "ordinary") &&
+          distanceSquared(anchor.x, anchor.y, target.x, target.y) <= triggerRadius ** 2
       );
       if (!trespasser) {
         retained.push(anchor);
@@ -2142,7 +2208,9 @@ function advanceAuthoredWorldFacts(
         style: "grave-sword-rise",
         origin: { x: anchor.x, y: anchor.y },
         angle: anchor.angle ?? 0,
-        damage: runtime.combat.damage,
+        damage: runtime.combat.damage * anchor.value *
+          (learnedIds.includes("recognize-calamity-leave-sheath") ? 1.35 :
+            learnedIds.includes("seal-grave-treading-stars") ? 0.72 : 1),
         width: Math.max(18, runtime.combat.auraRadius * 0.42),
         length: Math.max(260, runtime.combat.range),
         sourceGongfaId: runtime.gongfaId
@@ -3041,8 +3109,14 @@ export function planGongfaAttack(
     learnedMasteryIds: options.learnedMasteryIds ?? runtime.mastery.masteryLearnedIds
   };
   if (runtime.gongfaId === "mist-wraith-canon") {
+    const learnedIds = options.learnedMasteryIds ?? [];
     const soulIndex = runtime.authored.anchors.findIndex((anchor) => anchor.kind === "stored-soul");
-    const soul = soulIndex >= 0 ? runtime.authored.anchors.splice(soulIndex, 1)[0] : undefined;
+    const retainsSoul = learnedIds.includes("lantern-returning-underworld-attendant");
+    const soul = soulIndex >= 0
+      ? retainsSoul
+        ? runtime.authored.anchors[soulIndex]
+        : runtime.authored.anchors.splice(soulIndex, 1)[0]
+      : undefined;
     runtime.authored.charges = runtime.authored.anchors.filter(
       (anchor) => anchor.kind === "stored-soul"
     ).length;
@@ -3051,10 +3125,19 @@ export function planGongfaAttack(
       kind: "authored-line-strike",
       style: "mist-wraith-crossing",
       origin: "player",
-      aimMode: soul?.value === 3 ? "strongest" : "nearest",
-      damage: Math.max(1, Math.floor(runtime.combat.damage * (soul ? soul.value : 0.28))),
-      width: soul ? 14 + soul.value * 7 : 8,
+      aimMode: learnedIds.includes("life-seeking-fierce-wraith") || (soul?.value ?? 0) >= 3
+        ? "strongest"
+        : "nearest",
+      damage: Math.max(1, Math.floor(runtime.combat.damage * (soul
+        ? soul.value *
+          (learnedIds.includes("life-seeking-fierce-wraith") ? 1.35 : 1) *
+          (learnedIds.includes("wandering-mist-host") ? 0.62 : 1) *
+          (learnedIds.includes("long-banner-soul-call") ? 0.8 : 1) *
+          (retainsSoul ? 0.3 : 1)
+        : 0.28))),
+      width: soul ? 14 + soul.value * 7 + (learnedIds.includes("wandering-mist-host") ? 24 : 0) : 8,
       length: Math.max(240, runtime.combat.range + (soul?.value ?? 0) * 55),
+      ...(learnedIds.includes("wandering-mist-host") ? { maxHits: 3 } : {}),
       sourceGongfaId: runtime.gongfaId
     }];
   }

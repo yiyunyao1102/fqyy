@@ -125,6 +125,58 @@ describe("approved Gongfa mechanic contracts", () => {
     expect(result.runtime.authored.charges).toBe(0);
   });
 
+  it("changes Mist-Wraith collection and ordinary attacks at R3/R6", () => {
+    let runtime = createGongfaRuntime({ gongfaId: "mist-wraith-canon" });
+    runtime = advanceGongfaRuntime(runtime, {
+      kind: "enemy-death", targetId: 21, x: 130, y: 0, rank: "ordinary",
+      velocityX: 0, velocityY: 0, playerX: 0, playerY: 0
+    }).runtime;
+    runtime = advanceGongfaRuntime(runtime, {
+      kind: "tick", deltaMs: 16, nearbyEnemyCount: 1, playerX: 0, playerY: 0,
+      targets: [], learnedMasteryIds: ["long-banner-soul-call"]
+    }).runtime;
+    expect(runtime.authored.anchors[0]).toMatchObject({ kind: "stored-soul" });
+
+    const retained = planGongfaAttack(runtime, 0, {
+      learnedMasteryIds: ["lantern-returning-underworld-attendant"]
+    })[0];
+    expect(retained).toMatchObject({ kind: "authored-line-strike" });
+    expect(runtime.authored.anchors).toHaveLength(1);
+
+    const wandering = planGongfaAttack(runtime, 0, {
+      learnedMasteryIds: ["wandering-mist-host"]
+    })[0];
+    expect(wandering).toMatchObject({ kind: "authored-line-strike", maxHits: 3 });
+    expect(runtime.authored.anchors).toHaveLength(0);
+  });
+
+  it("makes Sword-Burial trigger doctrine and sealed inventory exclusive", () => {
+    let runtime = createGongfaRuntime({ gongfaId: "sword-burial-formation" });
+    runtime.authored.anchors.push({ kind: "grave-sword", x: 60, y: 0, value: 1, angle: 0 });
+    runtime = advanceGongfaRuntime(runtime, {
+      kind: "evade", playerX: 60, playerY: 0,
+      learnedMasteryIds: ["seal-grave-treading-stars"]
+    }).runtime;
+    expect(runtime.authored.anchors[0]).toMatchObject({ sealed: true, value: 1.35 });
+
+    const held = advanceGongfaRuntime(runtime, {
+      kind: "tick", deltaMs: 16, nearbyEnemyCount: 1, playerX: 0, playerY: 0,
+      learnedMasteryIds: ["seal-grave-treading-stars"],
+      targets: [{ targetId: 30, x: 60, y: 0, healthRatio: 1, rank: "elite" }]
+    });
+    expect(held.commands).toHaveLength(0);
+    expect(held.runtime.authored.anchors).toHaveLength(1);
+
+    held.runtime.authored.anchors[0]!.sealed = false;
+    const eliteOnly = advanceGongfaRuntime(held.runtime, {
+      kind: "tick", deltaMs: 16, nearbyEnemyCount: 1, playerX: 0, playerY: 0,
+      learnedMasteryIds: ["recognize-calamity-leave-sheath"],
+      targets: [{ targetId: 31, x: 60, y: 0, healthRatio: 1, rank: "ordinary" }]
+    });
+    expect(eliteOnly.commands).toHaveLength(0);
+    expect(eliteOnly.runtime.authored.anchors).toHaveLength(1);
+  });
+
   it("makes Flame-Demon health bands and rank-3 routes mechanically distinct", () => {
     const runtime = createGongfaRuntime({ gongfaId: "flame-demon-body-art" });
     runtime.authored.secondaryResource = 0.35;

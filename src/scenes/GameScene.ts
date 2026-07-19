@@ -1826,7 +1826,11 @@ export class GameScene extends Phaser.Scene {
 
   private applyEvadeRuntimeEffects(): void {
     for (const runtime of this.learnedGongfaRuntimes) {
-      const result = advanceGongfaRuntime(runtime, { kind: "evade" });
+      const result = advanceGongfaRuntime(runtime, {
+        kind: "evade",
+        playerX: this.player.x,
+        playerY: this.player.y
+      });
       this.adoptPrimaryRuntime(result.runtime);
       this.executeGongfaRuntimeCommands(result.commands, result.runtime);
     }
@@ -2531,7 +2535,9 @@ export class GameScene extends Phaser.Scene {
     const lineY = endY - originY;
     const lineLengthSquared = Math.max(1, lineX * lineX + lineY * lineY);
     const halfWidth = command.width / 2;
+    let hitCount = 0;
     for (const enemy of active) {
+      if (command.maxHits !== undefined && hitCount >= command.maxHits) break;
       const targetX = enemy.x - originX;
       const targetY = enemy.y - originY;
       const projection = (targetX * lineX + targetY * lineY) / lineLengthSquared;
@@ -2542,6 +2548,7 @@ export class GameScene extends Phaser.Scene {
       if (command.slowMultiplier !== undefined && command.slowDurationMs !== undefined) {
         enemy.applySlow(command.slowMultiplier, command.slowDurationMs);
       }
+      hitCount += 1;
       if (enemy.receiveDamage(command.damage)) this.resolveEnemyDeath(enemy);
     }
 

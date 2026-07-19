@@ -399,6 +399,7 @@ export interface AuthoredGongfaRuntimeState {
     angle?: number;
     originPlayerX?: number;
     originPlayerY?: number;
+    sealed?: boolean;
   }>;
 }
 
