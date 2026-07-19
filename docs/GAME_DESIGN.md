@@ -17,6 +17,12 @@
 4. Runs should produce regular decision points.
    The player should get meaningful build choices often enough to steer a run, not just receive passive numerical growth.
 
+The canonical distribution of Gongfa class fantasies, passive engines, and
+capstone ownership is defined in
+[`GONGFA_CLASS_IDENTITY_MATRIX.md`](GONGFA_CLASS_IDENTITY_MATRIX.md). The roster
+uses five xiuxian class families with five Gongfa each; Linggen determines
+elemental expression while class family determines combat behavior.
+
 ## Target Run Structure
 
 - A Run is persistent and can span multiple play sessions through save/resume
