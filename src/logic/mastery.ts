@@ -200,7 +200,8 @@ const approvedRuntimeTransformationGongfaIds = new Set<GongfaId>([
   "flame-demon-body-art",
   "frozen-river-formation",
   "thousand-root-formation",
-  "black-tide-scripture"
+  "black-tide-scripture",
+  "vermilion-bird-covenant"
 ]);
 
 const approvedRuntimeTransformationSeeds: Partial<Record<
@@ -307,6 +308,23 @@ const approvedRuntimeTransformationSeeds: Partial<Record<
       ["all-beings-share-the-flow", "All Beings Share the Flow", "All ordinary enemies receive maximum shared displacement.", "Tide damage is low.", "Global current and Deluge Mandate"],
       ["mystic-water-anchors-the-realm", "Mystic Water Anchors the Realm", "Still water and Deluge apply maximum slowing control.", "Movement and damage are weak.", "Global slow and anchored Deluge"],
       ["dry-sea-splits-the-shore", "Dry Sea Splits the Shore", "Flood becomes a short violent draining wave with maximum damage.", "It provides little movement control and ends quickly.", "Flood duration and Deluge burst"]
+    ]
+  },
+  "vermilion-bird-covenant": {
+    3: [
+      ["crimson-feather-head-hunt", "Crimson-Feather Head Hunt", "The one bird makes deep high-damage dives against elite and boss threats.", "Long exposure makes it easy to down and weak against ordinary crowds.", "Companion target priority, dive depth, and risk"],
+      ["cinnabar-plume-guardian", "Cinnabar-Plume Guardian", "The bird stays near the Cultivator and suffers much less dive danger.", "Flight range and damage are low.", "Close-guard dive envelope"],
+      ["firewing-sweeping-formation", "Firewing Sweeping Formation", "One flight crosses up to three distinct enemies.", "Single-target damage is weak and the long route is difficult to return from safely.", "Multi-target outbound route"]
+    ],
+    6: [
+      ["nurtured-covenant", "Nurtured Covenant", "Every safe return heals the bird substantially.", "Its maximum Bond is low, weakening Vermilion Rebirth.", "Return healing and Bond ceiling"],
+      ["blood-covenant-of-fire-bathing", "Blood Covenant of Fire-Bathing", "A low-health safe return grants very high Bond.", "Being downed erases that risky accumulated Bond.", "Low-health return reward"],
+      ["paired-wing-flight", "Paired-Wing Flight", "Moving with the returning bird speeds reunion and increases Bond.", "Moving against its return path delays safety and lowers the reward.", "Player movement relative to return flight"]
+    ],
+    9: [
+      ["urgent-ember-egg", "Urgent Ember Egg", "Eggs hatch and ember recovery finish quickly.", "The returned bird has low maximum health and reduced terminal force.", "Nirvana egg speed and rebirth health"],
+      ["true-plume-nirvana", "True-Plume Nirvana", "A successful durable egg returns the same bird as a larger persistent phoenix.", "The egg hatches very slowly and remains exposed longer.", "Durable egg and persistent phoenix form"],
+      ["sacrifice-to-guard-the-master", "Sacrifice to Guard the Master", "The living bird negates one incoming blow while the Cultivator is at low health.", "It immediately becomes an exposed weak egg and loses all Bond.", "Low-health rescue and forced egg state"]
     ]
   }
 };

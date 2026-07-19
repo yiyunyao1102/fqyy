@@ -496,7 +496,8 @@ describe("Gongfa runtime", () => {
       "ice-mirror-guard": "frozen-lotus-shell",
       "green-vine-art": "verdant-root-network",
       "verdant-ring-scripture": "sprout-sun-circle",
-      "ironwood-wave-form": "ironwood-surge-form"
+      "ironwood-wave-form": "ironwood-surge-form",
+      "vermilion-bird-covenant": "authored-vermilion-flight"
     };
     (Object.keys(gongfaConfigs) as GongfaId[]).forEach((gongfaId) => {
       const skill2Id = getRank10Skill2Id(gongfaId);
@@ -505,6 +506,10 @@ describe("Gongfa runtime", () => {
 
       const runtime = createGongfaRuntime({ gongfaId });
       if (gongfaId === "black-tide-scripture") runtime.authored.cycleCount = 3;
+      if (gongfaId === "vermilion-bird-covenant") {
+        runtime.authored.targetLedger[-20] = 1;
+        runtime.authored.resource = 1;
+      }
       if (gongfaId === "mist-wraith-canon") {
         runtime.authored.anchors.push({ kind: "stored-soul", x: 0, y: 0, value: 1 });
       }
@@ -555,6 +560,8 @@ describe("Gongfa runtime", () => {
                   { targetId: 92, x: -20, y: 0, healthRatio: 0.8, rank: "ordinary" },
                   { targetId: 93, x: 20, y: 0, healthRatio: 0.6, rank: "ordinary" },
                   { targetId: 94, x: 60, y: 0, healthRatio: 0.4, rank: "ordinary" }
+                ] : gongfaId === "vermilion-bird-covenant" ? [
+                  { targetId: 96, x: 120, y: 0, healthRatio: 1, rank: "elite" }
                 ] : undefined
               });
 
@@ -631,13 +638,20 @@ describe("Gongfa runtime", () => {
     const cast = (gongfaId: GongfaId) => {
       const runtime = createGongfaRuntime({ gongfaId });
       if (gongfaId === "black-tide-scripture") runtime.authored.cycleCount = 3;
+      if (gongfaId === "vermilion-bird-covenant") {
+        runtime.authored.targetLedger[-20] = 1;
+        runtime.authored.resource = 1;
+      }
       if (runtime.blazingFeather) runtime.blazingFeather.emberStacks = 6;
       if (runtime.surge) runtime.surge.stacks = 6;
       return advanceGongfaRuntime(runtime, {
         kind: "skill2",
         skill2Id: getRank10Skill2Id(gongfaId),
         eligibleTargetCount: 4,
-        hasMovementDirection: true
+        hasMovementDirection: true,
+        targets: gongfaId === "vermilion-bird-covenant" ? [
+          { targetId: 97, x: 120, y: 0, healthRatio: 1, rank: "elite" }
+        ] : undefined
       }).commands[0];
     };
 
@@ -666,6 +680,10 @@ describe("Gongfa runtime", () => {
       kind: "frozen-lotus-shell",
       radius: 162,
       petalCount: 16
+    });
+    expect(cast("vermilion-bird-covenant")).toMatchObject({
+      kind: "authored-vermilion-flight",
+      terminal: true
     });
     expect(cast("green-vine-art")).toMatchObject({
       kind: "verdant-root-network",

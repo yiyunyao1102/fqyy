@@ -429,6 +429,109 @@ describe("approved Gongfa mechanic contracts", () => {
     expect(planGongfaAttack(deluge.runtime, 0)).toEqual([]);
   });
 
+  it("keeps exactly one Vermilion companion and builds Bond only after a safe return", () => {
+    let runtime = createGongfaRuntime({ gongfaId: "vermilion-bird-covenant" });
+    expect(runtime.authored.anchors).toEqual([
+      expect.objectContaining({ kind: "companion", companionState: "guard", value: 1 })
+    ]);
+    let flight = advanceGongfaRuntime(runtime, {
+      kind: "tick", deltaMs: 16, nearbyEnemyCount: 1, isMoving: true,
+      movementAngle: 0, movementDistance: 5, playerX: 0, playerY: 0,
+      targets: [{ targetId: 131, x: 140, y: 0, healthRatio: 1, rank: "elite" }]
+    });
+    expect(flight.commands).toEqual([
+      expect.objectContaining({ kind: "authored-vermilion-flight", terminal: false, maxHits: 1 })
+    ]);
+    expect(flight.runtime.authored.resource).toBe(0);
+    expect(flight.runtime.authored.anchors[0]).toMatchObject({ companionState: "outbound", targetId: 131 });
+
+    flight = advanceGongfaRuntime(flight.runtime, {
+      kind: "tick", deltaMs: 100, nearbyEnemyCount: 1, isMoving: false,
+      playerX: 0, playerY: 0, targets: []
+    });
+    expect(flight.runtime.authored.anchors[0]).toMatchObject({ companionState: "return" });
+    expect(flight.runtime.authored.resource).toBe(0);
+
+    runtime = advanceGongfaRuntime(flight.runtime, {
+      kind: "tick", deltaMs: 720, nearbyEnemyCount: 1, isMoving: false,
+      playerX: 0, playerY: 0, targets: []
+    }).runtime;
+    expect(runtime.authored.anchors[0]).toMatchObject({ companionState: "guard" });
+    expect(runtime.authored.resource).toBeCloseTo(0.22);
+    expect(runtime.authored.anchors.filter((anchor) => anchor.kind === "companion")).toHaveLength(1);
+  });
+
+  it("makes the three Vermilion R3 routes differ in depth, safety, and coverage", () => {
+    const targets = [
+      { targetId: 141, x: 90, y: 0, healthRatio: 0.5, rank: "ordinary" as const },
+      { targetId: 142, x: 240, y: 0, healthRatio: 1, rank: "boss" as const },
+      { targetId: 143, x: 130, y: 80, healthRatio: 0.7, rank: "elite" as const }
+    ];
+    const cast = (learnedMasteryIds: string[]) => advanceGongfaRuntime(
+      createGongfaRuntime({ gongfaId: "vermilion-bird-covenant" }),
+      {
+        kind: "tick", deltaMs: 16, nearbyEnemyCount: 3, isMoving: true,
+        movementAngle: 0, movementDistance: 5, playerX: 0, playerY: 0,
+        targets, learnedMasteryIds
+      }
+    ).commands[0];
+    const hunt = cast(["crimson-feather-head-hunt"]);
+    const guard = cast(["cinnabar-plume-guardian"]);
+    const sweep = cast(["firewing-sweeping-formation"]);
+    expect(hunt).toMatchObject({ kind: "authored-vermilion-flight", maxHits: 1 });
+    expect(guard).toMatchObject({ kind: "authored-vermilion-flight", maxHits: 1 });
+    expect(sweep).toMatchObject({ kind: "authored-vermilion-flight", maxHits: 3 });
+    if (hunt?.kind === "authored-vermilion-flight" && guard?.kind === "authored-vermilion-flight" &&
+        sweep?.kind === "authored-vermilion-flight") {
+      expect(hunt.waypoints[0]?.targetId).toBe(142);
+      expect(Math.hypot(guard.waypoints[0]!.x, guard.waypoints[0]!.y)).toBeLessThanOrEqual(105);
+      expect(sweep.waypoints).toHaveLength(3);
+      expect(hunt.damage).toBeGreaterThan(sweep.damage);
+    }
+  });
+
+  it("turns full Vermilion Bond into one vulnerable egg and the same reborn phoenix", () => {
+    const runtime = createGongfaRuntime({ gongfaId: "vermilion-bird-covenant" });
+    runtime.authored.targetLedger[-20] = 1;
+    runtime.authored.resource = 1;
+    let rebirth = advanceGongfaRuntime(runtime, {
+      kind: "skill2", skill2Id: "vermilion-host-descent", nearbyEnemyCount: 1,
+      eligibleTargetCount: 1, hasMovementDirection: true,
+      learnedMasteryIds: ["true-plume-nirvana"],
+      targets: [{ targetId: 151, x: 160, y: 0, healthRatio: 1, rank: "elite" }]
+    });
+    expect(rebirth.commands).toEqual([
+      expect.objectContaining({ kind: "authored-vermilion-flight", terminal: true })
+    ]);
+    expect(rebirth.runtime.authored.anchors).toEqual([
+      expect.objectContaining({ kind: "companion", companionState: "egg", x: 160, y: 0 })
+    ]);
+    expect(rebirth.runtime.authored.resource).toBe(0);
+
+    rebirth = advanceGongfaRuntime(rebirth.runtime, {
+      kind: "tick", deltaMs: 2800, nearbyEnemyCount: 0, isMoving: false,
+      playerX: 160, playerY: 0, targets: [],
+      learnedMasteryIds: ["true-plume-nirvana"]
+    });
+    expect(rebirth.runtime.authored.anchors).toEqual([
+      expect.objectContaining({ kind: "companion", companionState: "phoenix", maxValue: 1.4, value: 1.4 })
+    ]);
+  });
+
+  it("lets one living Vermilion sacrifice itself for a low-health incoming blow", () => {
+    const runtime = createGongfaRuntime({ gongfaId: "vermilion-bird-covenant" });
+    const saved = advanceGongfaRuntime(runtime, {
+      kind: "incoming-damage", amount: 80, healthRatio: 0.2,
+      learnedMasteryIds: ["sacrifice-to-guard-the-master"]
+    });
+    expect(saved.commands).toEqual([
+      expect.objectContaining({ kind: "authored-vermilion-sacrifice" }),
+      { kind: "incoming-damage", finalDamage: 0 }
+    ]);
+    expect(saved.runtime.authored.anchors[0]).toMatchObject({ companionState: "egg", value: 0.55 });
+    expect(saved.runtime.authored.resource).toBe(0);
+  });
+
   it("persists authored inventories while resetting transient movement continuity", () => {
     let collection = learnGongfa(createGongfaCollectionRuntime(), "sword-burial-formation", true);
     const runtime = collection.byId["sword-burial-formation"]!;

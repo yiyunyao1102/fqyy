@@ -490,7 +490,7 @@ export const gongfaConfigs: Record<GongfaId, GongfaConfig> = {
   },
   "vermilion-bird-covenant": {
     id: "vermilion-bird-covenant", name: "Vermilion Bird Covenant", requiredRoots: ["fire"], pattern: "summon", title: "Vermilion Bird Covenant",
-    lore: "Raise ember familiars that circle overhead and dive upon prey in many small flames.", projectileTexture: "qi-bolt", tint: 0xff8a4b,
+    lore: "Protect one living Vermilion companion through dangerous outbound dives, safe returns, and physical rebirth.", projectileTexture: "qi-bolt", tint: 0xff8a4b,
     stages: {
       lianqi: { damage: 10, cooldownMs: 1380, count: 2, pierce: 1, projectileSpeed: 410, projectileLifetimeMs: 1450, spreadDeg: 360, auraRadius: 68, retaliationDamage: 0, range: 280, returnShots: 2, shellBursts: 0 },
       zhuji: { damage: 12, cooldownMs: 1200, count: 3, pierce: 1, projectileSpeed: 440, projectileLifetimeMs: 1600, spreadDeg: 360, auraRadius: 78, retaliationDamage: 0, range: 310, returnShots: 2, shellBursts: 0 },

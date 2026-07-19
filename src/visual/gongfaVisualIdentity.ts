@@ -48,7 +48,7 @@ export const gongfaVisualIdentities: Record<GongfaId, GongfaVisualIdentity> = {
   "heavenfall-body-art": { motifId: "heavenfall-impact", label: "Falling-star body seal", geometry: "impact", accent: 0xf0d38a, secondary: 0xffffff, spokes: 8, trailStyle: "forged impact arcs" },
   "thousand-root-formation": { motifId: "lifebound-root-lineages", label: "Living host root lineages", geometry: "roots", accent: 0x5fbd63, secondary: 0xdff0a0, spokes: 5, trailStyle: "body-bursting roots converging into one mother" },
   "flame-demon-body-art": { motifId: "furnace-blood-fists", label: "Furnace-blood combination", geometry: "impact", accent: 0xe94b35, secondary: 0xffb14f, spokes: 6, trailStyle: "horned flame impact arcs" },
-  "vermilion-bird-covenant": { motifId: "vermilion-spirit-host", label: "Vermilion spirit host", geometry: "wraiths", accent: 0xff6545, secondary: 0xffd168, spokes: 7, trailStyle: "looping phoenix tails" },
+  "vermilion-bird-covenant": { motifId: "single-vermilion-companion", label: "One living Vermilion bird", geometry: "wings", accent: 0xff4f36, secondary: 0xffd168, spokes: 2, trailStyle: "one outbound-and-return feather route" },
   "frozen-river-formation": { motifId: "underice-river-array", label: "Under-ice river array", geometry: "formation", accent: 0x69cfe8, secondary: 0xe1fbff, spokes: 6, trailStyle: "cracked frost channels" },
   "moonfall-tide-ritual": { motifId: "abyssal-moonfall", label: "Abyssal moonfall", geometry: "calamity", accent: 0x5688d8, secondary: 0xbfeaff, spokes: 8, trailStyle: "converging dark tides" },
   "sword-burial-formation": { motifId: "buried-sword-tomb", label: "Buried sword tomb", geometry: "formation", accent: 0xd9c887, secondary: 0xf5f1dd, spokes: 10, trailStyle: "rising grave blades" },

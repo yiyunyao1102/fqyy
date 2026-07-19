@@ -262,6 +262,7 @@ export class GameScene extends Phaser.Scene {
   private readonly skill2HitTargets = new Map<number, Set<number>>();
   private readonly activeProjectileImpacts = new Set<Phaser.GameObjects.Sprite>();
   private readonly rootInfectionMarkers = new Map<number, Phaser.GameObjects.Graphics>();
+  private vermilionBirdMarker?: Phaser.GameObjects.Graphics;
   private recentGongfaMotifs: string[] = [];
   private readonly activePickupEffects = new Set<Phaser.GameObjects.Sprite>();
   private readonly activeLingcaoEffects = new Set<Phaser.GameObjects.Sprite>();
@@ -374,6 +375,15 @@ export class GameScene extends Phaser.Scene {
       const next = phases[(runtime.authored.phase + 1) % 3] ?? "Still";
       const direction = directions[Math.floor(runtime.authored.secondaryResource)] ?? "East";
       return `Tide: ${phase} → ${next} · ${direction} · ${Math.floor(runtime.authored.resource * 100)}% · Cycles ${Math.min(3, runtime.authored.cycleCount)}/3`;
+    }
+    if (runtime.gongfaId === "vermilion-bird-covenant") {
+      const bird = runtime.authored.anchors.find((anchor) => anchor.kind === "companion");
+      const stateLabel = bird?.companionState === "egg" ? "Nirvana Egg" :
+        bird?.companionState === "ember" ? "Ember Recovery" :
+          bird?.companionState === "outbound" ? "Outbound Dive" :
+            bird?.companionState === "return" ? "Returning" :
+              bird?.companionState === "phoenix" ? "True Phoenix" : "Close Guard";
+      return `Vermilion Bird: ${stateLabel} · HP ${Math.floor(runtime.authored.secondaryResource * 100)}% · Bond ${Math.floor(runtime.authored.resource * 100)}%`;
     }
     return undefined;
   }
@@ -727,6 +737,9 @@ export class GameScene extends Phaser.Scene {
       this.executeGongfaRuntimeCommands(result.commands, result.runtime);
       if (result.runtime.gongfaId === "thousand-root-formation") {
         this.syncRootInfectionMarkers(result.runtime);
+      }
+      if (result.runtime.gongfaId === "vermilion-bird-covenant") {
+        this.syncVermilionBirdMarker(result.runtime);
       }
     }
     this.restorePrimaryRuntimeAdapter();
@@ -2193,6 +2206,9 @@ export class GameScene extends Phaser.Scene {
       if (result.runtime.gongfaId === "thousand-root-formation") {
         this.syncRootInfectionMarkers(result.runtime);
       }
+      if (result.runtime.gongfaId === "vermilion-bird-covenant") {
+        this.syncVermilionBirdMarker(result.runtime);
+      }
     }
     this.restorePrimaryRuntimeAdapter();
   }
@@ -2461,6 +2477,16 @@ export class GameScene extends Phaser.Scene {
 
       if (command.kind === "authored-deluge-mandate") {
         this.fireAuthoredDelugeMandate(command);
+        return;
+      }
+
+      if (command.kind === "authored-vermilion-flight") {
+        this.fireAuthoredVermilionFlight(command);
+        return;
+      }
+
+      if (command.kind === "authored-vermilion-sacrifice") {
+        this.fireAuthoredVermilionSacrifice(command);
         return;
       }
 
@@ -3151,6 +3177,133 @@ export class GameScene extends Phaser.Scene {
       onComplete: () => flood.destroy()
     });
     this.recordGongfaMotif(`${identity.motifId}:deluge-${command.fate}`);
+  }
+
+  private fireAuthoredVermilionFlight(
+    command: Extract<GongfaRuntimeCommand, { kind: "authored-vermilion-flight" }>
+  ): void {
+    if (command.waypoints.length === 0) return;
+    const identity = getGongfaVisualIdentity(command.sourceGongfaId);
+    const trail = this.applyGongfaEffectVisualHierarchy(this.add.graphics(), command.sourceGongfaId).setDepth(13);
+    trail.lineStyle(command.terminal ? 8 : 4, identity.accent, command.terminal ? 0.92 : 0.72);
+    trail.beginPath();
+    trail.moveTo(command.from.x, command.from.y);
+    command.waypoints.forEach((point, index) => {
+      const previous = index === 0 ? command.from : command.waypoints[index - 1]!;
+      const midX = (previous.x + point.x) / 2 + (index % 2 === 0 ? 18 : -18);
+      const midY = (previous.y + point.y) / 2 - 16;
+      trail.lineTo(midX, midY);
+      trail.lineTo(point.x, point.y);
+    });
+    trail.strokePath();
+    trail.lineStyle(2, identity.secondary, 0.82);
+    command.waypoints.forEach((point, index) => {
+      const previous = index === 0 ? command.from : command.waypoints[index - 1]!;
+      const angle = Phaser.Math.Angle.Between(previous.x, previous.y, point.x, point.y);
+      const centerX = (previous.x + point.x) / 2;
+      const centerY = (previous.y + point.y) / 2;
+      trail.lineBetween(centerX, centerY, centerX + Math.cos(angle + 2.35) * 18, centerY + Math.sin(angle + 2.35) * 18);
+      trail.lineBetween(centerX, centerY, centerX + Math.cos(angle - 2.35) * 18, centerY + Math.sin(angle - 2.35) * 18);
+    });
+    const birdGlyph = createGongfaSigil(
+      this, command.from.x, command.from.y, command.sourceGongfaId,
+      command.terminal ? 42 : 27, 0.95
+    ).setDepth(14);
+    const destination = command.waypoints[command.waypoints.length - 1]!;
+    this.tweens.add({
+      targets: birdGlyph,
+      x: destination.x,
+      y: destination.y,
+      rotation: command.terminal ? Math.PI * 2 : Math.PI,
+      duration: command.terminal ? 620 : 420,
+      onComplete: () => birdGlyph.destroy()
+    });
+    if (command.maxHits > 0 && command.damage > 0) {
+      const hitIds = new Set<number>();
+      let from = command.from;
+      for (const to of command.waypoints) {
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const lengthSq = Math.max(1, dx * dx + dy * dy);
+        for (const enemy of (this.enemies.getChildren() as Enemy[]).filter((candidate) => candidate.active)) {
+          if (hitIds.size >= command.maxHits || hitIds.has(enemy.combatTargetId)) continue;
+          const projection = Math.max(0, Math.min(1,
+            ((enemy.x - from.x) * dx + (enemy.y - from.y) * dy) / lengthSq
+          ));
+          const closestX = from.x + dx * projection;
+          const closestY = from.y + dy * projection;
+          if (Phaser.Math.Distance.Between(enemy.x, enemy.y, closestX, closestY) > command.width / 2 + 12) continue;
+          hitIds.add(enemy.combatTargetId);
+          if (enemy.receiveDamage(command.damage)) this.resolveEnemyDeath(enemy);
+        }
+        from = to;
+      }
+    }
+    this.tweens.add({ targets: trail, alpha: 0, duration: command.terminal ? 820 : 560, onComplete: () => trail.destroy() });
+    this.recordGongfaMotif(`${identity.motifId}:${command.terminal ? "terminal-dive" : "guided-flight"}`);
+  }
+
+  private fireAuthoredVermilionSacrifice(
+    command: Extract<GongfaRuntimeCommand, { kind: "authored-vermilion-sacrifice" }>
+  ): void {
+    const identity = getGongfaVisualIdentity(command.sourceGongfaId);
+    const shield = this.applyGongfaEffectVisualHierarchy(this.add.graphics(), command.sourceGongfaId).setDepth(16);
+    shield.fillStyle(identity.accent, 0.24);
+    shield.fillCircle(this.player.x, this.player.y, 74);
+    shield.lineStyle(7, identity.secondary, 0.95);
+    shield.strokeCircle(this.player.x, this.player.y, 74);
+    for (let wing = -1; wing <= 1; wing += 2) {
+      shield.beginPath();
+      shield.moveTo(this.player.x, this.player.y - 8);
+      shield.lineTo(this.player.x + wing * 82, this.player.y - 42);
+      shield.lineTo(this.player.x + wing * 46, this.player.y + 24);
+      shield.strokePath();
+    }
+    this.tweens.add({ targets: shield, alpha: 0, scale: 1.3, duration: 700, onComplete: () => shield.destroy() });
+    this.recordGongfaMotif(`${identity.motifId}:sacrifice-guard`);
+  }
+
+  private syncVermilionBirdMarker(runtime: GongfaRuntime): void {
+    const bird = runtime.authored.anchors.find((anchor) => anchor.kind === "companion");
+    if (!bird) {
+      this.vermilionBirdMarker?.destroy();
+      this.vermilionBirdMarker = undefined;
+      return;
+    }
+    const identity = getGongfaVisualIdentity(runtime.gongfaId);
+    const marker = this.vermilionBirdMarker ?? this.add.graphics().setDepth(15);
+    this.vermilionBirdMarker = marker;
+    marker.clear();
+    const birdState = bird.companionState ?? "guard";
+    if (birdState === "egg") {
+      marker.fillStyle(identity.secondary, 0.9);
+      marker.fillEllipse(0, 0, 25, 33);
+      marker.lineStyle(3, identity.accent, 0.9);
+      marker.strokeEllipse(0, 0, 31, 39);
+    } else if (birdState === "ember") {
+      marker.fillStyle(identity.accent, 0.9);
+      marker.fillTriangle(-10, 10, 0, -15, 10, 10);
+      marker.fillStyle(identity.secondary, 0.85);
+      marker.fillTriangle(-5, 9, 0, -5, 5, 9);
+    } else {
+      const phoenixScale = birdState === "phoenix" ? 1.45 : 1;
+      marker.fillStyle(identity.secondary, 0.92);
+      marker.fillCircle(0, -2, 7 * phoenixScale);
+      marker.fillStyle(identity.accent, 0.86);
+      marker.fillTriangle(0, 0, -25 * phoenixScale, -12, -9, 10 * phoenixScale);
+      marker.fillTriangle(0, 0, 25 * phoenixScale, -12, 9, 10 * phoenixScale);
+      marker.fillTriangle(-5, 6, 0, 24 * phoenixScale, 5, 6);
+    }
+    const healthRatio = Math.max(0, Math.min(1, bird.value / Math.max(0.01, bird.maxValue ?? 1)));
+    marker.fillStyle(0x18212a, 0.78);
+    marker.fillRect(-22, 27, 44, 5);
+    marker.fillStyle(identity.accent, 0.95);
+    marker.fillRect(-22, 27, 44 * healthRatio, 5);
+    marker.lineStyle(2, identity.secondary, 0.7);
+    marker.beginPath();
+    marker.arc(0, 0, 34, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * runtime.authored.resource);
+    marker.strokePath();
+    marker.setPosition(bird.x, bird.y);
   }
 
   private fireFeatherRainFormation(
@@ -5084,7 +5237,8 @@ export class GameScene extends Phaser.Scene {
     for (const runtime of this.learnedGongfaRuntimes) {
       const result = advanceGongfaRuntime(runtime, {
         kind: "incoming-damage",
-        amount: finalDamage
+        amount: finalDamage,
+        healthRatio: this.player.stats.maxHealth > 0 ? this.player.stats.health / this.player.stats.maxHealth : 0
       });
       this.adoptPrimaryRuntime(result.runtime);
       const damageCommand = result.commands.find(
@@ -5096,9 +5250,10 @@ export class GameScene extends Phaser.Scene {
         result.commands.filter((command) => command.kind !== "incoming-damage"),
         result.runtime
       );
+      if (finalDamage <= 0) break;
     }
     this.restorePrimaryRuntimeAdapter();
-    this.player.applyDamage(finalDamage);
+    if (finalDamage > 0) this.player.applyDamage(finalDamage);
     if (
       resonanceModifiers.emergencyHealFraction > 0 &&
       this.vitalityEmergencyCooldownMs <= 0 &&

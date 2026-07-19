@@ -14,7 +14,7 @@ const archetypes = [
   ["heavenfall-body-art", "melee-combination", "star-breaking-descent", "star-breaking-descent"],
   ["thousand-root-formation", "authored-root-infection", "myriad-root-killing-field", "authored-root-ancestor"],
   ["flame-demon-body-art", "authored-blood-combination", "asura-conflagration", "star-breaking-descent"],
-  ["vermilion-bird-covenant", "summon-wraiths", "vermilion-host-descent", "hundred-ghost-procession"],
+  ["vermilion-bird-covenant", "authored-vermilion-flight", "vermilion-host-descent", "authored-vermilion-flight"],
   ["frozen-river-formation", "authored-cold-debt-placement", "frozen-river-prison", "authored-frozen-river-network"],
   ["moonfall-tide-ritual", "ritual-impact", "moonfall-cataclysm", "heavenly-sun-descent"],
   ["sword-burial-formation", "authored-line-strike", "ten-thousand-sword-tomb", "authored-line-strike"],
@@ -98,6 +98,10 @@ describe("expanded Gongfa archetypes", () => {
           { kind: "infection", targetId: 94, x: 60, y: 0, value: 0, infectionStage: 0 }
         );
       }
+      if (gongfaId === "vermilion-bird-covenant") {
+        runtime.authored.targetLedger[-20] = 1;
+        runtime.authored.resource = 1;
+      }
       expect(getRank10Skill2Id(gongfaId)).toBe(expectedSkill2);
       const result = advanceGongfaRuntime(runtime, {
         kind: "skill2",
@@ -113,6 +117,8 @@ describe("expanded Gongfa archetypes", () => {
           { targetId: 92, x: -20, y: 0, healthRatio: 0.8, rank: "ordinary" },
           { targetId: 93, x: 20, y: 0, healthRatio: 0.6, rank: "ordinary" },
           { targetId: 94, x: 60, y: 0, healthRatio: 0.4, rank: "ordinary" }
+        ] : gongfaId === "vermilion-bird-covenant" ? [
+          { targetId: 95, x: 120, y: 0, healthRatio: 1, rank: "elite" }
         ] : undefined
       });
       expect(result.commands[0]?.kind).toBe(expectedCommand);
@@ -133,11 +139,13 @@ describe("expanded Gongfa archetypes", () => {
     const outputs = archetypes.flatMap(([gongfaId]) => {
       const runtime = createGongfaRuntime({ gongfaId });
       runtime.combat = { ...runtime.combat, ...gongfaConfigs[gongfaId].stages.yuanying! };
-      const command = planGongfaAttack(runtime, 0, {
-        playerX: 0,
-        playerY: 0,
-        targets: [{ targetId: 77, x: 100, y: 0, healthRatio: 1, rank: "ordinary" }]
-      })[0]!;
+      const targets = [{ targetId: 77, x: 100, y: 0, healthRatio: 1, rank: "ordinary" as const }];
+      const command = gongfaId === "vermilion-bird-covenant"
+        ? advanceGongfaRuntime(runtime, {
+            kind: "tick", deltaMs: 16, nearbyEnemyCount: 1, isMoving: true,
+            movementAngle: 0, movementDistance: 4, playerX: 0, playerY: 0, targets
+          }).commands[0]!
+        : planGongfaAttack(runtime, 0, { playerX: 0, playerY: 0, targets })[0]!;
       const cadence = runtime.combat.cooldownMs / 1000;
       if (command.kind === "ritual-impact") {
         return command.damage * command.count * (1 + command.burnPulses * 0.14) / cadence;
@@ -157,6 +165,10 @@ describe("expanded Gongfa archetypes", () => {
       }
       if (command.kind === "authored-root-infection") {
         expect(command.hosts).toHaveLength(1);
+        return [];
+      }
+      if (command.kind === "authored-vermilion-flight") {
+        expect(command.maxHits).toBeGreaterThan(0);
         return [];
       }
       if (command.kind === "root-trap-array") {

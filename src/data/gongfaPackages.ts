@@ -152,10 +152,10 @@ export const gongfaPackageCatalog: Record<GongfaId, GongfaPackageDefinition> = {
     skill2: { id: "asura-conflagration", name: "Asura Conflagration", description: "Assumes an asura stance and unleashes a furious sequence of point-blank detonating strikes.", tags: ["melee", "fire", "explosive", "reflect"] }
   },
   "vermilion-bird-covenant": {
-    combatRole: "A mobile summoner whose ember birds divide the arena and repeatedly hunt scattered prey.", visualMotif: "Vermilion wing seals, ember eggs, and looping phoenix trails.",
-    skill1: { id: "ember-bird-brood", name: "Ember-Bird Brood", description: "Calls a brood of fire spirits that independently pursue and scorch nearby targets.", tags: ["summon", "fire", "projectile", "ailment"] },
-    passive: { name: "Phoenix Covenant", resource: "Plumage", description: "Spirit hits gather Plumage, adding birds and heat to later summonings." },
-    skill2: { id: "vermilion-host-descent", name: "Vermilion Host Descent", description: "A blazing host circles the battlefield before diving through every surviving enemy.", tags: ["summon", "fire", "projectile", "ailment"] }
+    combatRole: "A companion keeper who guides one vulnerable bird through dangerous dives and safe returns.", visualMotif: "One persistent vermilion silhouette, outbound feather routes, a health ring, and one physical egg.",
+    skill1: { id: "ember-bird-brood", name: "One Vermilion Bird", description: "The same living bird automatically dives along movement-guided routes, then must return safely before attacking again.", tags: ["summon", "fire", "ailment"] },
+    passive: { name: "Phoenix Bond", resource: "Bond", description: "Only a dangerous flight followed by a safe return builds Bond; hits alone grant nothing and being downed erases it." },
+    skill2: { id: "vermilion-host-descent", name: "Vermilion Rebirth", description: "At full Bond, the bird makes a terminal dive and becomes one damageable egg that can hatch into the same individual.", tags: ["summon", "fire", "ailment", "defensive"] }
   },
   "frozen-river-formation": {
     combatRole: "A control trapper that freezes pursuit lanes beneath persistent, overlapping river seals.", visualMotif: "Cracked ice channels, pale river knots, and blue-white frost pulses.",

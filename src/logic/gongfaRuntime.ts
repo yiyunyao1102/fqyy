@@ -236,7 +236,7 @@ export type GongfaRuntimeEvent =
       targets?: AuthoredTargetFact[];
       learnedMasteryIds?: string[];
     }
-  | { kind: "incoming-damage"; amount: number; skill2Id?: string; learnedMasteryIds?: string[] }
+  | { kind: "incoming-damage"; amount: number; healthRatio?: number; skill2Id?: string; learnedMasteryIds?: string[] }
   | { kind: "crimson-detonation"; x: number; y: number; damage: number; fromEmbed: boolean }
   | {
       kind: "enemy-death";
@@ -589,6 +589,23 @@ export type GongfaRuntimeCommand =
       fate: "shared-flow" | "anchored-water" | "dry-sea";
       sourceGongfaId: GongfaId;
       masteryCast: MasterySkill2Cast;
+    }
+  | {
+      kind: "authored-vermilion-flight";
+      from: { x: number; y: number };
+      waypoints: Array<{ x: number; y: number; targetId?: number }>;
+      damage: number;
+      width: number;
+      maxHits: number;
+      terminal: boolean;
+      sourceGongfaId: GongfaId;
+      masteryCast?: MasterySkill2Cast;
+    }
+  | {
+      kind: "authored-vermilion-sacrifice";
+      x: number;
+      y: number;
+      sourceGongfaId: GongfaId;
     };
 
 export interface YujianTransformationTriggers {
@@ -2335,6 +2352,166 @@ function advanceAuthoredWorldFacts(
     state.phaseElapsedMs += event.deltaMs;
   }
 
+  if (runtime.gongfaId === "vermilion-bird-covenant") {
+    let bird = state.anchors.find((anchor) => anchor.kind === "companion");
+    if (!bird) {
+      bird = {
+        kind: "companion", companionState: "guard", x: event.playerX ?? 0, y: event.playerY ?? 0,
+        value: 1, maxValue: 1
+      };
+      state.anchors.push(bird);
+    }
+    const targets = event.targets ?? [];
+    const playerX = event.playerX ?? 0;
+    const playerY = event.playerY ?? 0;
+    const birdState = bird.companionState ?? "guard";
+    let stateTimer = state.targetLedger[-30] ?? 0;
+    const bondCap = learnedIds.includes("nurtured-covenant") ? 0.65 : 1;
+    let rawBond = Math.min(bondCap, state.targetLedger[-20] ?? 0);
+    const downBird = (): void => {
+      bird!.companionState = "ember";
+      bird!.value = 0;
+      bird!.maxValue = 1;
+      stateTimer = 0;
+      rawBond = 0;
+      state.resource = 0;
+    };
+
+    if (birdState === "guard" || birdState === "phoenix") {
+      bird.x = playerX;
+      bird.y = playerY;
+      if (event.isMoving && targets.length > 0) {
+        const headHunt = learnedIds.includes("crimson-feather-head-hunt");
+        const guardian = learnedIds.includes("cinnabar-plume-guardian");
+        const sweeping = learnedIds.includes("firewing-sweeping-formation");
+        const ordered = [...targets].sort((a, b) => {
+          if (headHunt) {
+            const rankA = a.rank === "boss" ? 3 : a.rank === "elite" ? 2 : 1;
+            const rankB = b.rank === "boss" ? 3 : b.rank === "elite" ? 2 : 1;
+            return rankB + b.healthRatio - (rankA + a.healthRatio);
+          }
+          return distanceSquared(a.x, a.y, playerX, playerY) - distanceSquared(b.x, b.y, playerX, playerY);
+        });
+        const chosen = sweeping ? ordered.slice(0, 3) : ordered.slice(0, 1);
+        const waypoints = chosen.map((target) => {
+          if (!guardian) return { x: target.x, y: target.y, targetId: target.targetId };
+          const angle = Math.atan2(target.y - playerY, target.x - playerX);
+          const distance = Math.min(105, Math.hypot(target.x - playerX, target.y - playerY));
+          return {
+            x: playerX + Math.cos(angle) * distance,
+            y: playerY + Math.sin(angle) * distance,
+            targetId: target.targetId
+          };
+        });
+        const destination = waypoints[waypoints.length - 1]!;
+        commands.push({
+          kind: "authored-vermilion-flight",
+          from: { x: bird.x, y: bird.y },
+          waypoints,
+          damage: Math.max(1, Math.floor(runtime.combat.damage *
+            (headHunt ? 3.1 : guardian ? 1.3 : sweeping ? 1.05 : 2.1) *
+            Math.max(0.65, bird.maxValue ?? 1))),
+          width: guardian ? 26 : sweeping ? 54 : 34,
+          maxHits: sweeping ? 3 : 1,
+          terminal: false,
+          sourceGongfaId: runtime.gongfaId
+        });
+        bird.x = destination.x;
+        bird.y = destination.y;
+        bird.targetId = destination.targetId;
+        bird.companionState = "outbound";
+        bird.angle = Math.atan2(destination.y - playerY, destination.x - playerX);
+        stateTimer = 0;
+      }
+    } else if (birdState === "outbound") {
+      const guardian = learnedIds.includes("cinnabar-plume-guardian");
+      const sweeping = learnedIds.includes("firewing-sweeping-formation");
+      const headHunt = learnedIds.includes("crimson-feather-head-hunt");
+      stateTimer += event.deltaMs;
+      const dangerCount = targets.filter((target) => distanceSquared(target.x, target.y, bird!.x, bird!.y) <= 72 ** 2).length;
+      const dangerScale = guardian ? 0.45 : headHunt ? 1.5 : sweeping ? 1.2 : 1;
+      bird.value -= dangerCount * event.deltaMs * 0.000075 * dangerScale;
+      const outboundDuration = guardian ? 560 : headHunt ? 1250 : sweeping ? 1400 : 900;
+      if (bird.value <= 0) {
+        downBird();
+      } else if (!event.isMoving || stateTimer >= outboundDuration) {
+        const returnAngle = Math.atan2(playerY - bird.y, playerX - bird.x);
+        commands.push({
+          kind: "authored-vermilion-flight",
+          from: { x: bird.x, y: bird.y },
+          waypoints: [{ x: playerX, y: playerY }],
+          damage: 0,
+          width: 18,
+          maxHits: 0,
+          terminal: false,
+          sourceGongfaId: runtime.gongfaId
+        });
+        bird.angle = returnAngle;
+        bird.x = playerX;
+        bird.y = playerY;
+        bird.companionState = "return";
+        stateTimer = 0;
+      }
+    } else if (birdState === "return") {
+      const paired = learnedIds.includes("paired-wing-flight");
+      const alignment = paired && event.isMoving && event.movementAngle !== undefined
+        ? Math.cos(event.movementAngle - (bird.angle ?? 0))
+        : 0;
+      stateTimer += event.deltaMs * (paired ? alignment > 0.5 ? 1.55 : alignment < -0.5 ? 0.55 : 1 : 1);
+      if (stateTimer >= 720) {
+        const lowHealthReturn = bird.value / Math.max(0.01, bird.maxValue ?? 1) < 0.5;
+        const bondGain = learnedIds.includes("blood-covenant-of-fire-bathing")
+          ? lowHealthReturn ? 0.42 : 0.18
+          : paired ? alignment > 0.5 ? 0.32 : 0.16 : 0.22;
+        rawBond = Math.min(bondCap, rawBond + bondGain);
+        if (learnedIds.includes("nurtured-covenant")) {
+          bird.value = Math.min(bird.maxValue ?? 1, bird.value + (bird.maxValue ?? 1) * 0.24);
+        }
+        bird.companionState = (bird.maxValue ?? 1) > 1 ? "phoenix" : "guard";
+        bird.x = playerX;
+        bird.y = playerY;
+        stateTimer = 0;
+      }
+    } else if (birdState === "ember") {
+      stateTimer += event.deltaMs;
+      const recoveryMs = learnedIds.includes("urgent-ember-egg") ? 2400 :
+        learnedIds.includes("true-plume-nirvana") ? 5200 : 4200;
+      if (stateTimer >= recoveryMs) {
+        bird.companionState = "guard";
+        bird.maxValue = learnedIds.includes("urgent-ember-egg") ? 0.68 : 0.82;
+        bird.value = bird.maxValue;
+        bird.x = playerX;
+        bird.y = playerY;
+        stateTimer = 0;
+      }
+    } else if (birdState === "egg") {
+      const closeToEgg = distanceSquared(playerX, playerY, bird.x, bird.y) <= 115 ** 2;
+      stateTimer += event.deltaMs * (closeToEgg ? 2 : 1);
+      const attackers = targets.filter((target) => distanceSquared(target.x, target.y, bird!.x, bird!.y) <= 62 ** 2).length;
+      bird.value -= attackers * event.deltaMs * 0.00006;
+      const hatchMs = learnedIds.includes("urgent-ember-egg") ? 2200 :
+        learnedIds.includes("true-plume-nirvana") ? 5600 : 4200;
+      if (bird.value <= 0) {
+        downBird();
+      } else if (stateTimer >= hatchMs) {
+        const truePlume = learnedIds.includes("true-plume-nirvana");
+        bird.maxValue = truePlume ? 1.4 : learnedIds.includes("urgent-ember-egg") ? 0.68 : 0.58;
+        bird.value = bird.maxValue;
+        bird.companionState = truePlume ? "phoenix" : "guard";
+        bird.x = playerX;
+        bird.y = playerY;
+        stateTimer = 0;
+      }
+    }
+    state.targetLedger[-20] = rawBond;
+    state.targetLedger[-21] = bondCap;
+    state.targetLedger[-30] = stateTimer;
+    state.resource = rawBond / bondCap;
+    state.secondaryResource = Math.max(0, bird.value / Math.max(0.01, bird.maxValue ?? 1));
+    state.phase = ["guard", "outbound", "return", "ember", "egg", "phoenix"].indexOf(bird.companionState ?? "guard");
+    state.charges = bird.companionState === "ember" ? 0 : 1;
+  }
+
   state.anchors = state.anchors.filter((anchor) => {
     if (anchor.remainingMs === undefined) return true;
     anchor.remainingMs -= event.deltaMs;
@@ -2707,6 +2884,50 @@ export function advanceGongfaRuntime(
   if (event.kind === "skill2") {
     const skill2Stats = skill2RefinementStats(next);
     const skill2Base = skill2Combat(next);
+    if (event.skill2Id === "vermilion-host-descent" && next.gongfaId === "vermilion-bird-covenant") {
+      const bird = next.authored.anchors.find((anchor) =>
+        anchor.kind === "companion" && !["ember", "egg"].includes(anchor.companionState ?? "guard")
+      );
+      const targets = event.targets ?? [];
+      const target = [...targets].sort((a, b) => {
+        const rankA = a.rank === "boss" ? 3 : a.rank === "elite" ? 2 : 1;
+        const rankB = b.rank === "boss" ? 3 : b.rank === "elite" ? 2 : 1;
+        return rankB + b.healthRatio - (rankA + a.healthRatio);
+      })[0];
+      if (bird && target && next.authored.resource >= 0.999) {
+        const learnedIds = event.learnedMasteryIds;
+        const truePlume = learnedIds.includes("true-plume-nirvana");
+        const urgent = learnedIds.includes("urgent-ember-egg");
+        const eggHealth = truePlume ? 1.4 : urgent ? 0.48 : 0.62;
+        commands.push({
+          kind: "authored-vermilion-flight",
+          from: { x: bird.x, y: bird.y },
+          waypoints: [{ x: target.x, y: target.y, targetId: target.targetId }],
+          damage: Math.max(1, Math.floor(skill2Base.damage * skill2Stats.damageScale *
+            (truePlume ? 3.5 : urgent ? 2.4 : 3.1))),
+          width: 58 + skill2Stats.coverage * 8,
+          maxHits: 4 + skill2Stats.coverage,
+          terminal: true,
+          sourceGongfaId: next.gongfaId,
+          masteryCast: {
+            skill2Id: "vermilion-host-descent",
+            cooldownMs: Math.floor(authoredSkill2Plans["vermilion-host-descent"].cooldownMs * skill2Stats.cadenceScale)
+          }
+        });
+        bird.x = target.x;
+        bird.y = target.y;
+        bird.value = eggHealth;
+        bird.maxValue = eggHealth;
+        bird.companionState = "egg";
+        bird.targetId = undefined;
+        next.authored.targetLedger[-20] = 0;
+        next.authored.targetLedger[-30] = 0;
+        next.authored.resource = 0;
+        next.authored.secondaryResource = 1;
+        next.authored.phase = 4;
+      }
+      return { runtime: next, commands };
+    }
     if (event.skill2Id === "moon-tide-vault" && next.gongfaId === "black-tide-scripture") {
       if (next.authored.cycleCount >= 3) {
         const learnedIds = event.learnedMasteryIds;
@@ -3194,6 +3415,32 @@ export function advanceGongfaRuntime(
     if (next.yujian && !(event.learnedMasteryIds ?? []).includes("still-sword-heart")) {
       next.yujian.intentStacks = Math.max(0, next.yujian.intentStacks - 2);
       syncYujianCombat(next);
+    }
+
+    if (
+      next.gongfaId === "vermilion-bird-covenant" &&
+      event.learnedMasteryIds.includes("sacrifice-to-guard-the-master") &&
+      (event.healthRatio ?? 1) <= 0.25
+    ) {
+      const bird = next.authored.anchors.find((anchor) =>
+        anchor.kind === "companion" && !["ember", "egg"].includes(anchor.companionState ?? "guard")
+      );
+      if (bird) {
+        bird.companionState = "egg";
+        bird.value = 0.55;
+        bird.maxValue = 0.55;
+        next.authored.targetLedger[-20] = 0;
+        next.authored.targetLedger[-30] = 0;
+        next.authored.resource = 0;
+        commands.push({
+          kind: "authored-vermilion-sacrifice",
+          x: bird.x,
+          y: bird.y,
+          sourceGongfaId: next.gongfaId
+        });
+        commands.push({ kind: "incoming-damage", finalDamage: 0 });
+        return { runtime: next, commands };
+      }
     }
 
     const state = next.gengjin;
@@ -3742,6 +3989,9 @@ export function planGongfaAttack(
         : 0.82,
       sourceGongfaId: runtime.gongfaId
     }];
+  }
+  if (runtime.gongfaId === "vermilion-bird-covenant") {
+    return [];
   }
   if (runtime.gongfaId === "frozen-river-formation") {
     const targets = (options.targets ?? []).filter((target) =>

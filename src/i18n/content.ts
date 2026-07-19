@@ -163,8 +163,10 @@ const zhGongfa: Record<GongfaId, GongfaTranslation> = {
     skill1: { name: "炉血连式", description: "连续施展近身炎拳，最终以大范围重击点燃余敌。" }, passive: { name: "魔心反势", resource: "怒势", description: "近战与反震积累怒势，强化下一轮连式。" }, skill2: { name: "修罗焚世", description: "化身修罗，以连续贴身爆拳焚尽周遭敌群。" }
   },
   "vermilion-bird-covenant": {
-    name: "朱雀灵契", lore: "结契朱雀余灵，群羽巡天。", combatRole: "召唤炎鸟自主猎敌，以多次小伤覆盖分散敌群。", visualMotif: "朱红翼印、烬卵与凤凰回旋尾迹。",
-    skill1: { name: "烬鸟灵群", description: "召唤炎鸟灵群，自主追击并灼烧附近敌人。" }, passive: { name: "凤契羽衣", resource: "灵羽", description: "炎鸟命中积累灵羽，增加后续召唤数量与热力。" }, skill2: { name: "朱雀群临", description: "召来朱雀灵群环游战场，俯冲贯穿所有幸存之敌。" }
+    name: "朱雀灵契", lore: "独契一羽朱雀，以险飞与安归养成同一性命。", combatRole: "护持唯一朱雀完成出击与返巢；它有独立生命，倒下后会失去凤契。", visualMotif: "唯一朱红鸟影、出返羽路、生命契环与实体涅槃卵。",
+    skill1: { name: "独契朱雀", description: "同一只活体朱雀依玩家移动方向自动俯冲，并必须安全返巢后才能再次出击。" },
+    passive: { name: "凤契", resource: "契合", description: "只有危险出飞后安全归返才能增长凤契；命中本身不增长，倒下则清空。" },
+    skill2: { name: "朱雀涅槃", description: "凤契圆满时发动终末俯冲并化为一枚可受伤的卵，成功孵化仍是同一只朱雀。" }
   },
   "frozen-river-formation": {
     name: "冰河伏阵", lore: "封寒流于地脉，待敌入阵。", combatRole: "以持久冰阵封锁追路，层叠寒脉反复控场伤敌。", visualMotif: "冰裂河道、霜白水结与蓝白寒潮。",
@@ -988,7 +990,16 @@ const zhMasteryOverrides: Record<string, { name: string; lore?: string }> = {
   "heaven-timed-tide": { name: "天时定潮" },
   "all-beings-share-the-flow": { name: "众生同流" },
   "mystic-water-anchors-the-realm": { name: "玄水镇界" },
-  "dry-sea-splits-the-shore": { name: "枯海裂岸" }
+  "dry-sea-splits-the-shore": { name: "枯海裂岸" },
+  "crimson-feather-head-hunt": { name: "赤羽猎首" },
+  "cinnabar-plume-guardian": { name: "丹翎护主" },
+  "firewing-sweeping-formation": { name: "火翼掠阵" },
+  "nurtured-covenant": { name: "温养灵契" },
+  "blood-covenant-of-fire-bathing": { name: "浴火血契" },
+  "paired-wing-flight": { name: "比翼同翔" },
+  "urgent-ember-egg": { name: "烬卵急生" },
+  "true-plume-nirvana": { name: "真羽涅槃" },
+  "sacrifice-to-guard-the-master": { name: "舍身护主" }
 };
 
 let zhReplacementPairs: Array<[string, string]> | null = null;
