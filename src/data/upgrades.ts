@@ -443,12 +443,12 @@ const missingStartingFamilies: Array<readonly [GongfaId, FamilySeed[]]> = [
     ["fixed-noon", "Fixed Noon", "Zenith fades more slowly between rituals.", "surgeStability", 0.84, "Passive: Calamity Cycle"]
   ]],
   ["mist-wraith-canon", [
-    ["wraith-tempering", "Wraith Tempering", "Mist-wraith bolts strike with greater force.", "skill1Damage", 4, "Skill 1: Mist-Wraith Retinue"],
-    ["expanded-retinue", "Expanded Retinue", "Each covenant calls another mist wraith.", "skill1Count", 1, "Skill 1: Mist-Wraith Retinue"],
-    ["ghost-tide-conduction", "Ghost-Tide Conduction", "Covenant empowers both summoning Skills.", "gongfaDamageSynergy", 2, "Owning Gongfa: both Skills"],
-    ["deepwater-bolts", "Deepwater Bolts", "Every wraith bolt pierces another target.", "gongfaPierceSynergy", 1, "Owning Gongfa: both Skills"],
-    ["quickened-covenant", "Quickened Covenant", "Wraith hits deepen Covenant faster.", "surgeBuild", 0.18, "Passive: Ghost-Tide Covenant"],
-    ["remembered-oath", "Remembered Oath", "Covenant fades more slowly without prey.", "surgeStability", 0.84, "Passive: Ghost-Tide Covenant"]
+    ["wraith-tempering", "Wraith Tempering", "Each consumed soul crossing strikes harder.", "skill1Damage", 4, "Skill 1: Finite Wraith Crossing"],
+    ["expanded-retinue", "Expanded Procession", "Adds one visible stored-soul slot without creating a soul.", "skill1Count", 1, "Passive: Water Souls"],
+    ["ghost-tide-conduction", "Funeral Conduction", "Strengthens both ordinary crossings and Hundred-Ghost Night Crossing.", "gongfaDamageSynergy", 2, "Owning Gongfa: both Skills"],
+    ["deepwater-bolts", "Broad Spirit Road", "Widens each ordinary crossing by 10 without adding hits or souls.", "gongfaRangeSynergy", 10, "Skill 1: Finite Wraith Crossing"],
+    ["quickened-covenant", "Deep Soul Vessel", "Collected souls remain in the procession 18% longer.", "surgeBuild", 0.18, "Passive: Water Souls"],
+    ["remembered-oath", "Lingering Corpse Light", "Uncollected corpse souls remain visible 16% longer.", "surgeStability", 0.84, "Passive: Water Souls"]
   ]],
   ["heavenfall-body-art", [
     ["vajra-tempering", "Vajra Tempering", "Falling-Star Combination strikes with greater force.", "skill1Damage", 7, "Skill 1: Falling-Star Combination"],

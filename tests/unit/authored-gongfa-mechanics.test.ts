@@ -76,8 +76,7 @@ describe("approved Gongfa mechanic contracts", () => {
 
     const [crossing] = planGongfaAttack(runtime, 0);
     expect(crossing).toMatchObject({
-      kind: "authored-line-strike",
-      style: "mist-wraith-crossing",
+      kind: "authored-mist-wraith-crossing",
       damage: runtime.combat.damage * 2
     });
     expect(runtime.authored.charges).toBe(0);
@@ -109,17 +108,26 @@ describe("approved Gongfa mechanic contracts", () => {
     const runtime = createGongfaRuntime({ gongfaId: "mist-wraith-canon" });
     runtime.authored.anchors.push(
       { kind: "stored-soul", x: 10, y: 0, value: 1 },
-      { kind: "stored-soul", x: 20, y: 0, value: 2 }
+      { kind: "stored-soul", x: 20, y: 0, value: 2 },
+      { kind: "stored-soul", x: 30, y: 0, value: 1 },
+      { kind: "stored-soul", x: 40, y: 0, value: 3 }
     );
-    runtime.authored.charges = 2;
+    runtime.authored.charges = 4;
     const result = advanceGongfaRuntime(runtime, {
       kind: "skill2", skill2Id: "hundred-ghost-procession", eligibleTargetCount: 4,
       nearbyEnemyCount: 4, hasMovementDirection: true,
+      targets: [
+        { targetId: 31, x: -120, y: -40, healthRatio: 1, rank: "ordinary" },
+        { targetId: 32, x: 80, y: 30, healthRatio: 0.8, rank: "ordinary" },
+        { targetId: 33, x: 160, y: 70, healthRatio: 0.6, rank: "elite" },
+        { targetId: 34, x: 240, y: 100, healthRatio: 1, rank: "boss" }
+      ],
       learnedMasteryIds: ["nether-river-funeral"]
     });
-    expect(result.commands).toHaveLength(2);
+    expect(result.commands).toHaveLength(1);
     expect(result.commands[0]).toMatchObject({
-      kind: "authored-line-strike", slowMultiplier: 0.45, slowDurationMs: 2200
+      kind: "authored-ghost-procession", fate: "funeral",
+      slowMultiplier: 0.32, slowDurationMs: 3000
     });
     expect(result.runtime.authored.anchors).toHaveLength(0);
     expect(result.runtime.authored.charges).toBe(0);
@@ -140,14 +148,98 @@ describe("approved Gongfa mechanic contracts", () => {
     const retained = planGongfaAttack(runtime, 0, {
       learnedMasteryIds: ["lantern-returning-underworld-attendant"]
     })[0];
-    expect(retained).toMatchObject({ kind: "authored-line-strike" });
+    expect(retained).toMatchObject({ kind: "authored-line-strike", style: "soul-guiding-lantern" });
     expect(runtime.authored.anchors).toHaveLength(1);
 
     const wandering = planGongfaAttack(runtime, 0, {
-      learnedMasteryIds: ["wandering-mist-host"]
+      learnedMasteryIds: ["wandering-mist-host"],
+      targets: [
+        { targetId: 41, x: 60, y: 0, healthRatio: 1, rank: "ordinary" },
+        { targetId: 42, x: 100, y: 20, healthRatio: 0.8, rank: "ordinary" },
+        { targetId: 43, x: 140, y: -20, healthRatio: 0.6, rank: "ordinary" }
+      ]
     })[0];
-    expect(wandering).toMatchObject({ kind: "authored-line-strike", maxHits: 3 });
+    expect(wandering).toMatchObject({
+      kind: "authored-mist-wraith-crossing",
+      targetIds: [41, 42, 43]
+    });
     expect(runtime.authored.anchors).toHaveLength(0);
+  });
+
+  it("resets an interrupted corpse vigil and upgrades only one ordinary soul", () => {
+    let runtime = createGongfaRuntime({ gongfaId: "mist-wraith-canon" });
+    runtime = advanceGongfaRuntime(runtime, {
+      kind: "enemy-death", targetId: 51, x: 0, y: 0, rank: "ordinary",
+      velocityX: 0, velocityY: 0, playerX: 0, playerY: 0,
+      learnedMasteryIds: ["halt-lantern-keep-vigil"]
+    }).runtime;
+    runtime = advanceGongfaRuntime(runtime, {
+      kind: "tick", deltaMs: 500, nearbyEnemyCount: 1, playerX: 0, playerY: 0,
+      isMoving: false, learnedMasteryIds: ["halt-lantern-keep-vigil"]
+    }).runtime;
+    expect(runtime.authored.anchors[0]?.kind).toBe("corpse-soul");
+    runtime = advanceGongfaRuntime(runtime, {
+      kind: "tick", deltaMs: 16, nearbyEnemyCount: 1, playerX: 0, playerY: 0,
+      isMoving: true, learnedMasteryIds: ["halt-lantern-keep-vigil"]
+    }).runtime;
+    expect(runtime.authored.targetLedger[51]).toBe(0);
+    runtime = advanceGongfaRuntime(runtime, {
+      kind: "tick", deltaMs: 800, nearbyEnemyCount: 1, playerX: 0, playerY: 0,
+      isMoving: false, learnedMasteryIds: ["halt-lantern-keep-vigil"]
+    }).runtime;
+    expect(runtime.authored.anchors[0]).toMatchObject({ kind: "stored-soul", value: 2 });
+
+    let elite = createGongfaRuntime({ gongfaId: "mist-wraith-canon" });
+    elite = advanceGongfaRuntime(elite, {
+      kind: "enemy-death", targetId: 52, x: 0, y: 0, rank: "elite",
+      velocityX: 0, velocityY: 0, playerX: 0, playerY: 0,
+      learnedMasteryIds: ["halt-lantern-keep-vigil"]
+    }).runtime;
+    elite = advanceGongfaRuntime(elite, {
+      kind: "tick", deltaMs: 16, nearbyEnemyCount: 1, playerX: 0, playerY: 0,
+      isMoving: true, learnedMasteryIds: ["halt-lantern-keep-vigil"]
+    }).runtime;
+    expect(elite.authored.anchors[0]).toMatchObject({ kind: "stored-soul", value: 2 });
+  });
+
+  it("requires four souls and gives every Night Crossing law a distinct fixed route", () => {
+    const targets = [
+      { targetId: 61, x: -180, y: -30, healthRatio: 1, rank: "ordinary" as const },
+      { targetId: 62, x: -20, y: 20, healthRatio: 0.7, rank: "ordinary" as const },
+      { targetId: 63, x: 150, y: 45, healthRatio: 0.8, rank: "elite" as const },
+      { targetId: 64, x: 260, y: 70, healthRatio: 1, rank: "boss" as const }
+    ];
+    const cast = (law: string, soulCount = 4) => {
+      const runtime = createGongfaRuntime({ gongfaId: "mist-wraith-canon" });
+      for (let index = 0; index < soulCount; index += 1) {
+        runtime.authored.anchors.push({
+          kind: "stored-soul", x: 0, y: 0, value: index === 3 ? 3 : index === 2 ? 2 : 1
+        });
+      }
+      return advanceGongfaRuntime(runtime, {
+        kind: "skill2", skill2Id: "hundred-ghost-procession",
+        eligibleTargetCount: targets.length, nearbyEnemyCount: targets.length,
+        targets, learnedMasteryIds: [law]
+      });
+    };
+    expect(cast("hundred-ghosts-cross-river", 3).commands).toHaveLength(0);
+    const parallel = cast("hundred-ghosts-cross-river");
+    const converge = cast("myriad-souls-ask-for-life");
+    const funeral = cast("nether-river-funeral");
+    const parallelCommand = parallel.commands[0];
+    const convergeCommand = converge.commands[0];
+    const funeralCommand = funeral.commands[0];
+    expect(parallelCommand).toMatchObject({ kind: "authored-ghost-procession", fate: "parallel" });
+    expect(convergeCommand).toMatchObject({ kind: "authored-ghost-procession", fate: "converge" });
+    expect(funeralCommand).toMatchObject({ kind: "authored-ghost-procession", fate: "funeral" });
+    if (parallelCommand?.kind === "authored-ghost-procession" &&
+        convergeCommand?.kind === "authored-ghost-procession" &&
+        funeralCommand?.kind === "authored-ghost-procession") {
+      const parallelIds = parallelCommand.routes.flatMap((route) => route.targetIds);
+      expect(new Set(parallelIds).size).toBe(parallelIds.length);
+      expect(convergeCommand.routes.every((route) => route.targetIds[0] === 64)).toBe(true);
+      expect(funeralCommand.routes[0]!.damage).toBeLessThan(parallelCommand.routes[0]!.damage);
+    }
   });
 
   it("makes Sword-Burial trigger doctrine and sealed inventory exclusive", () => {

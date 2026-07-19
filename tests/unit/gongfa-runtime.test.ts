@@ -554,7 +554,12 @@ describe("Gongfa runtime", () => {
         );
       }
       if (gongfaId === "mist-wraith-canon") {
-        runtime.authored.anchors.push({ kind: "stored-soul", x: 0, y: 0, value: 1 });
+        runtime.authored.anchors.push(
+          { kind: "stored-soul", x: 0, y: 0, value: 1 },
+          { kind: "stored-soul", x: 0, y: 0, value: 1 },
+          { kind: "stored-soul", x: 0, y: 0, value: 2 },
+          { kind: "stored-soul", x: 0, y: 0, value: 3 }
+        );
       }
       if (gongfaId === "sword-burial-formation") {
         runtime.authored.anchors.push({ kind: "grave-sword", x: 0, y: 0, value: 1, angle: 0 });

@@ -10,7 +10,7 @@ import { authoredGongfaMechanics } from "../../src/data/authoredGongfaMechanics"
 
 const archetypes = [
   ["nine-sun-calamity-seal", "authored-falling-sun", "heavenly-sun-descent", "authored-falling-sun"],
-  ["mist-wraith-canon", "authored-line-strike", "hundred-ghost-procession", "authored-line-strike"],
+  ["mist-wraith-canon", "authored-mist-wraith-crossing", "hundred-ghost-procession", "authored-ghost-procession"],
   ["heavenfall-body-art", "authored-heavenfall-body", "star-breaking-descent", "authored-star-descent"],
   ["thousand-root-formation", "authored-root-infection", "myriad-root-killing-field", "authored-root-ancestor"],
   ["flame-demon-body-art", "authored-blood-combination", "asura-conflagration", "authored-asura-transformation"],
@@ -51,7 +51,12 @@ describe("expanded Gongfa archetypes", () => {
     const kinds = archetypes.slice(0, 4).map(([gongfaId, expectedKind]) => {
       const runtime = createGongfaRuntime({ gongfaId });
       if (gongfaId === "mist-wraith-canon") {
-        runtime.authored.anchors.push({ kind: "stored-soul", x: 0, y: 0, value: 1 });
+        runtime.authored.anchors.push(
+          { kind: "stored-soul", x: 0, y: 0, value: 1 },
+          { kind: "stored-soul", x: 0, y: 0, value: 1 },
+          { kind: "stored-soul", x: 0, y: 0, value: 2 },
+          { kind: "stored-soul", x: 0, y: 0, value: 3 }
+        );
       }
       if (gongfaId === "sword-burial-formation") {
         runtime.authored.anchors.push({ kind: "grave-sword", x: 0, y: 0, value: 1, angle: 0 });
@@ -85,7 +90,12 @@ describe("expanded Gongfa archetypes", () => {
     for (const [gongfaId, , expectedSkill2, expectedCommand] of archetypes) {
       const runtime = createGongfaRuntime({ gongfaId });
       if (gongfaId === "mist-wraith-canon") {
-        runtime.authored.anchors.push({ kind: "stored-soul", x: 0, y: 0, value: 1 });
+        runtime.authored.anchors.push(
+          { kind: "stored-soul", x: 0, y: 0, value: 1 },
+          { kind: "stored-soul", x: 0, y: 0, value: 1 },
+          { kind: "stored-soul", x: 0, y: 0, value: 2 },
+          { kind: "stored-soul", x: 0, y: 0, value: 3 }
+        );
       }
       if (gongfaId === "sword-burial-formation") {
         runtime.authored.anchors.push({ kind: "grave-sword", x: 0, y: 0, value: 1, angle: 0 });

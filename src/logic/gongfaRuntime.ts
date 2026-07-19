@@ -536,7 +536,7 @@ export type GongfaRuntimeCommand =
     }
   | {
       kind: "authored-line-strike";
-      style: "mist-wraith-crossing" | "grave-sword-rise";
+      style: "mist-wraith-crossing" | "soul-guiding-lantern" | "grave-sword-rise";
       origin: "player" | { x: number; y: number };
       aimMode?: "nearest" | "strongest";
       angle?: number;
@@ -549,6 +549,32 @@ export type GongfaRuntimeCommand =
       slowDurationMs?: number;
       maxHits?: number;
       masteryCast?: MasterySkill2Cast;
+    }
+  | {
+      kind: "authored-mist-wraith-crossing";
+      from: { x: number; y: number };
+      waypoints: Array<{ x: number; y: number }>;
+      targetIds: number[];
+      damage: number;
+      width: number;
+      rankPower: number;
+      sourceGongfaId: GongfaId;
+    }
+  | {
+      kind: "authored-ghost-procession";
+      routes: Array<{
+        from: { x: number; y: number };
+        to: { x: number; y: number };
+        targetIds: number[];
+        damage: number;
+        width: number;
+        rankPower: number;
+      }>;
+      fate: "parallel" | "converge" | "funeral";
+      slowMultiplier: number;
+      slowDurationMs: number;
+      sourceGongfaId: GongfaId;
+      masteryCast: MasterySkill2Cast;
     }
   | {
       kind: "authored-blood-combination";
@@ -2058,7 +2084,7 @@ export function createGongfaRuntime(input: CreateGongfaRuntimeInput): GongfaRunt
         ? { ...blazingFeatherDefaults, ...input.blazingFeather }
         : undefined,
     surge: surgeGongfaIdSet.has(input.gongfaId) &&
-      !["verdant-ring-scripture", "ice-mirror-guard", "ironwood-wave-form", "flame-demon-body-art"].includes(input.gongfaId)
+      !["verdant-ring-scripture", "ice-mirror-guard", "ironwood-wave-form", "flame-demon-body-art", "mist-wraith-canon"].includes(input.gongfaId)
       ? { ...surgeDefaults, ...input.surge }
       : undefined,
     authored: {
@@ -3021,7 +3047,8 @@ function advanceAuthoredWorldFacts(
     }
     if (runtime.gongfaId === "mist-wraith-canon") {
       const value = event.rank === "boss" ? 3 : event.rank === "elite" ? 2 : 1;
-      const remainingMs = event.rank === "boss" ? 20_000 : event.rank === "elite" ? 12_000 : 6_000;
+      const remainingMs = (event.rank === "boss" ? 20_000 : event.rank === "elite" ? 12_000 : 6_000) *
+        Math.pow(1.16, masteryEffectTiers(learnedIds, "surgeStability"));
       state.anchors.push({
         kind: "corpse-soul",
         x: event.x,
@@ -4111,18 +4138,22 @@ function advanceAuthoredWorldFacts(
       : learnedIds.includes("tread-corpse-guide-soul")
         ? 40
         : 68;
+    const refinedCapacity = state.maxCharges + (runtime.skill1Refinements?.countBonus ?? 0);
     const capacity = learnedIds.includes("life-seeking-fierce-wraith")
-      ? Math.min(5, state.maxCharges)
+      ? Math.min(5, refinedCapacity)
       : learnedIds.includes("lantern-returning-underworld-attendant")
-        ? state.maxCharges + 3
+        ? refinedCapacity + 3
         : learnedIds.includes("long-banner-soul-call")
-          ? Math.max(1, state.maxCharges - 2)
-          : state.maxCharges;
+          ? Math.max(1, refinedCapacity - 2)
+          : refinedCapacity;
     let storedCount = state.anchors.filter((anchor) => anchor.kind === "stored-soul").length;
     for (const anchor of state.anchors) {
       const inCollectionRange = distanceSquared(anchor.x, anchor.y, playerX, playerY) <= collectionRadius ** 2;
-      const needsVigil = learnedIds.includes("halt-lantern-keep-vigil") && anchor.kind === "corpse-soul";
-      if (needsVigil && inCollectionRange) {
+      const needsVigil = learnedIds.includes("halt-lantern-keep-vigil") &&
+        anchor.kind === "corpse-soul" && anchor.value === 1;
+      if (needsVigil && !inCollectionRange) {
+        state.targetLedger[anchor.targetId ?? -1] = 0;
+      } else if (needsVigil && inCollectionRange) {
         const ledgerId = anchor.targetId ?? -1;
         state.targetLedger[ledgerId] = event.isMoving
           ? 0
@@ -4138,7 +4169,9 @@ function advanceAuthoredWorldFacts(
         anchor.kind = "stored-soul";
         if (learnedIds.includes("tread-corpse-guide-soul")) anchor.value *= 1.35;
         anchor.remainingMs = (anchor.value >= 3 ? 20_000 : anchor.value >= 2 ? 14_000 : 9_000) *
-          (learnedIds.includes("tread-corpse-guide-soul") ? 1.5 : 1);
+          (learnedIds.includes("tread-corpse-guide-soul") ? 1.5 : 1) *
+          (learnedIds.includes("lantern-returning-underworld-attendant") ? 1.45 : 1) *
+          Math.pow(1.18, masteryEffectTiers(learnedIds, "surgeBuild"));
         storedCount += 1;
       }
       if (anchor.kind === "stored-soul") {
@@ -4366,6 +4399,7 @@ export function advanceGongfaRuntime(
     runtime.gongfaId !== "ice-mirror-guard" &&
     runtime.gongfaId !== "ironwood-wave-form" &&
     runtime.gongfaId !== "flame-demon-body-art" &&
+    runtime.gongfaId !== "mist-wraith-canon" &&
     event.kind !== "skill2"
   ) {
     return { runtime, commands: [] };
@@ -4919,30 +4953,85 @@ export function advanceGongfaRuntime(
     }
     if (event.skill2Id === "hundred-ghost-procession" && next.gongfaId === "mist-wraith-canon") {
       const storedSouls = next.authored.anchors.filter((anchor) => anchor.kind === "stored-soul");
-      if (storedSouls.length > 0) {
+      if (storedSouls.length >= 4) {
         const learnedIds = event.learnedMasteryIds;
         const converges = learnedIds.includes("myriad-souls-ask-for-life");
         const funeral = learnedIds.includes("nether-river-funeral");
-        const spread = learnedIds.includes("hundred-ghosts-cross-river") ? 0.11 : 0.045;
-        storedSouls.forEach((soul, index) => {
-          commands.push({
-            kind: "authored-line-strike",
-            style: "mist-wraith-crossing",
-            origin: "player",
-            aimMode: converges ? "strongest" : soul.value >= 3 ? "strongest" : "nearest",
-            angleOffset: converges ? 0 : (index - (storedSouls.length - 1) / 2) * spread,
-            damage: Math.max(1, Math.floor(skill2Base.damage * soul.value * skill2Stats.damageScale * (funeral ? 0.55 : 1))),
-            width: 20 + soul.value * 8 + skill2Stats.coverage * 3,
-            length: Math.max(520, skill2Base.range * 1.65),
-            sourceGongfaId: next.gongfaId,
-            ...(funeral ? { slowMultiplier: 0.45, slowDurationMs: 2200 } : {}),
-            ...(index === 0 ? {
-              masteryCast: {
-                skill2Id: "hundred-ghost-procession" as const,
-                cooldownMs: Math.floor(authoredSkill2Plans["hundred-ghost-procession"].cooldownMs * skill2Stats.cadenceScale)
-              }
-            } : {})
-          });
+        const targets = event.targets ?? [];
+        const strongest = [...targets].sort((a, b) => {
+          const rank = (target: AuthoredTargetFact): number => target.rank === "boss" ? 3 : target.rank === "elite" ? 2 : 1;
+          return rank(b) * 10 + b.healthRatio - rank(a) * 10 - a.healthRatio;
+        })[0];
+        const candidateAngles = [0, Math.PI / 2, Math.PI / 4, -Math.PI / 4];
+        const angle = candidateAngles.sort((a, b) => {
+          const spreadFor = (candidate: number): number => {
+            const projections = targets.map((target) => -Math.sin(candidate) * target.x + Math.cos(candidate) * target.y);
+            return projections.length > 0 ? Math.max(...projections) - Math.min(...projections) : 0;
+          };
+          return spreadFor(a) - spreadFor(b);
+        })[0] ?? 0;
+        const dirX = Math.cos(angle); const dirY = Math.sin(angle);
+        const normalX = -dirY; const normalY = dirX;
+        const boundaryEndpoints = (offset: number): [{ x: number; y: number }, { x: number; y: number }] => {
+          const centerX = normalX * offset; const centerY = normalY * offset;
+          const candidates: Array<{ x: number; y: number; t: number }> = [];
+          if (Math.abs(dirX) > 0.001) {
+            for (const x of [-1050, 1050]) {
+              const t = (x - centerX) / dirX; const y = centerY + dirY * t;
+              if (Math.abs(y) <= 690.01) candidates.push({ x, y, t });
+            }
+          }
+          if (Math.abs(dirY) > 0.001) {
+            for (const y of [-690, 690]) {
+              const t = (y - centerY) / dirY; const x = centerX + dirX * t;
+              if (Math.abs(x) <= 1050.01) candidates.push({ x, y, t });
+            }
+          }
+          candidates.sort((a, b) => a.t - b.t);
+          const first = candidates[0] ?? { x: centerX - dirX * 1050, y: centerY - dirY * 1050 };
+          const last = candidates[candidates.length - 1] ?? { x: centerX + dirX * 1050, y: centerY + dirY * 1050 };
+          return [{ x: first.x, y: first.y }, { x: last.x, y: last.y }];
+        };
+        const projectedTargets = targets.map((target) => ({
+          target,
+          offset: normalX * target.x + normalY * target.y
+        })).sort((a, b) => a.offset - b.offset);
+        const claimedTargets = new Set<number>();
+        const routes = storedSouls.map((soul, index) => {
+          const quantile = projectedTargets.length > 0
+            ? projectedTargets[Math.min(projectedTargets.length - 1, Math.floor((index + 0.5) / storedSouls.length * projectedTargets.length))]!.offset
+            : (index - (storedSouls.length - 1) / 2) * 54;
+          const boundaryOffset = (index - (storedSouls.length - 1) / 2) * 42;
+          const [laneFrom, laneTo] = boundaryEndpoints(converges ? boundaryOffset : quantile);
+          const from = laneFrom;
+          const to = converges && strongest
+            ? { x: strongest.x, y: strongest.y }
+            : laneTo;
+          const width = 24 + soul.value * 10 + skill2Stats.coverage * 3;
+          const targetIds = converges && strongest
+            ? [strongest.targetId]
+            : projectedTargets.flatMap(({ target, offset }) => {
+                if (claimedTargets.has(target.targetId) || Math.abs(offset - quantile) > width / 2 + 14) return [];
+                claimedTargets.add(target.targetId);
+                return [target.targetId];
+              });
+          return {
+            from, to, targetIds,
+            damage: Math.max(1, Math.floor(skill2Base.damage * soul.value * skill2Stats.damageScale * (funeral ? 0.38 : 1))),
+            width, rankPower: soul.value
+          };
+        });
+        commands.push({
+          kind: "authored-ghost-procession",
+          routes,
+          fate: converges ? "converge" : funeral ? "funeral" : "parallel",
+          slowMultiplier: funeral ? 0.32 : 0.65,
+          slowDurationMs: funeral ? 3000 : 700,
+          sourceGongfaId: next.gongfaId,
+          masteryCast: {
+            skill2Id: "hundred-ghost-procession",
+            cooldownMs: Math.floor(authoredSkill2Plans["hundred-ghost-procession"].cooldownMs * skill2Stats.cadenceScale)
+          }
         });
         next.authored.anchors = next.authored.anchors.filter((anchor) => anchor.kind !== "stored-soul");
         next.authored.charges = 0;
@@ -5818,6 +5907,7 @@ export function planGongfaAttack(
   if (runtime.gongfaId === "verdant-ring-scripture") return [];
   if (runtime.gongfaId === "mist-wraith-canon") {
     const learnedIds = options.learnedMasteryIds ?? [];
+    const targets = options.targets ?? [];
     const soulIndex = runtime.authored.anchors.findIndex((anchor) => anchor.kind === "stored-soul");
     const retainsSoul = learnedIds.includes("lantern-returning-underworld-attendant");
     const soul = soulIndex >= 0
@@ -5828,24 +5918,48 @@ export function planGongfaAttack(
     runtime.authored.charges = runtime.authored.anchors.filter(
       (anchor) => anchor.kind === "stored-soul"
     ).length;
-    runtime.authored.resource = runtime.authored.charges / Math.max(1, runtime.authored.maxCharges);
+    const refinedCapacity = runtime.authored.maxCharges + (runtime.skill1Refinements?.countBonus ?? 0);
+    const capacity = learnedIds.includes("life-seeking-fierce-wraith") ? Math.min(5, refinedCapacity) :
+      learnedIds.includes("lantern-returning-underworld-attendant") ? refinedCapacity + 3 :
+        learnedIds.includes("long-banner-soul-call") ? Math.max(1, refinedCapacity - 2) : refinedCapacity;
+    runtime.authored.resource = runtime.authored.charges / Math.max(1, capacity);
+    if (!soul || retainsSoul) return [{
+      kind: "authored-line-strike", style: "soul-guiding-lantern", origin: "player",
+      aimMode: "nearest", damage: Math.max(1, Math.floor(runtime.combat.damage * 0.24)),
+      width: 8, length: Math.max(220, runtime.combat.range * 0.82), maxHits: 1,
+      sourceGongfaId: runtime.gongfaId
+    }];
+    const playerX = options.playerX ?? 0; const playerY = options.playerY ?? 0;
+    const crossingReach = Math.max(240, runtime.combat.range + soul.value * 55);
+    const eligibleTargets = targets.filter((target) =>
+      distanceSquared(target.x, target.y, playerX, playerY) <= crossingReach ** 2
+    );
+    const strongest = [...eligibleTargets].sort((a, b) => {
+      const rank = (target: AuthoredTargetFact): number => target.rank === "boss" ? 3 : target.rank === "elite" ? 2 : 1;
+      return rank(b) * 10 + b.healthRatio - rank(a) * 10 - a.healthRatio;
+    })[0];
+    const nearest = [...eligibleTargets].sort((a, b) =>
+      distanceSquared(a.x, a.y, playerX, playerY) - distanceSquared(b.x, b.y, playerX, playerY)
+    )[0];
+    const wandering = learnedIds.includes("wandering-mist-host");
+    const routeTargets = wandering
+      ? eligibleTargets.filter((target) => target.rank === "ordinary").sort((a, b) =>
+          distanceSquared(a.x, a.y, playerX, playerY) - distanceSquared(b.x, b.y, playerX, playerY)
+        ).slice(0, 3)
+      : [learnedIds.includes("life-seeking-fierce-wraith") || soul.value >= 3 ? strongest : nearest].filter(
+          (target): target is AuthoredTargetFact => target !== undefined
+        );
+    const finalTargets = routeTargets.length > 0 ? routeTargets : strongest ? [strongest] : [];
     return [{
-      kind: "authored-line-strike",
-      style: "mist-wraith-crossing",
-      origin: "player",
-      aimMode: learnedIds.includes("life-seeking-fierce-wraith") || (soul?.value ?? 0) >= 3
-        ? "strongest"
-        : "nearest",
-      damage: Math.max(1, Math.floor(runtime.combat.damage * (soul
-        ? soul.value *
-          (learnedIds.includes("life-seeking-fierce-wraith") ? 1.35 : 1) *
-          (learnedIds.includes("wandering-mist-host") ? 0.62 : 1) *
-          (learnedIds.includes("long-banner-soul-call") ? 0.8 : 1) *
-          (retainsSoul ? 0.3 : 1)
-        : 0.28))),
-      width: soul ? 14 + soul.value * 7 + (learnedIds.includes("wandering-mist-host") ? 24 : 0) : 8,
-      length: Math.max(240, runtime.combat.range + (soul?.value ?? 0) * 55),
-      ...(learnedIds.includes("wandering-mist-host") ? { maxHits: 3 } : {}),
+      kind: "authored-mist-wraith-crossing",
+      from: { x: playerX, y: playerY },
+      waypoints: finalTargets.map((target) => ({ x: target.x, y: target.y })),
+      targetIds: finalTargets.map((target) => target.targetId),
+      damage: Math.max(1, Math.floor(runtime.combat.damage * soul.value *
+        (learnedIds.includes("life-seeking-fierce-wraith") ? 1.35 : 1) *
+        (wandering ? 0.62 : 1) * (learnedIds.includes("long-banner-soul-call") ? 0.8 : 1))),
+      width: 14 + soul.value * 7 + (wandering ? 20 : 0) + (runtime.skill1Refinements?.rangeBonus ?? 0),
+      rankPower: soul.value,
       sourceGongfaId: runtime.gongfaId
     }];
   }

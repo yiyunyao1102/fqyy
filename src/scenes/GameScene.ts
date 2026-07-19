@@ -269,6 +269,7 @@ export class GameScene extends Phaser.Scene {
   private ancientTreeMarker?: Phaser.GameObjects.Graphics;
   private ancientTreeMarkerSignature = "";
   private asuraBodyMarker?: Phaser.GameObjects.Graphics;
+  private readonly mistSoulMarkers = new Map<number, Phaser.GameObjects.Graphics>();
   private moonfallMarker?: Phaser.GameObjects.Graphics;
   private readonly moonfallVelocityRecord = new Map<number, { x: number; y: number }>();
   private verdantGlyphMarker?: Phaser.GameObjects.Graphics;
@@ -429,6 +430,16 @@ export class GameScene extends Phaser.Scene {
       const choice = runtime.mastery.masteryLearnedIds.includes("undying-asura") ? "Undying" :
         runtime.mastery.masteryLearnedIds.includes("world-burning-asura") ? "World-Burning" : "Life-Hunting";
       return `Flame-Demon: ${runtime.authored.phase === 1 ? `${choice} Asura · irreversible` : healthBand} · Health ${Math.floor(runtime.authored.secondaryResource * 100)}%`;
+    }
+    if (runtime.gongfaId === "mist-wraith-canon") {
+      const stored = runtime.authored.anchors.filter((anchor) => anchor.kind === "stored-soul").length;
+      const corpses = runtime.authored.anchors.filter((anchor) => anchor.kind === "corpse-soul").length;
+      const learned = runtime.mastery.masteryLearnedIds;
+      const refinedCapacity = runtime.authored.maxCharges + (runtime.skill1Refinements?.countBonus ?? 0);
+      const capacity = learned.includes("life-seeking-fierce-wraith") ? Math.min(5, refinedCapacity) :
+        learned.includes("lantern-returning-underworld-attendant") ? refinedCapacity + 3 :
+          learned.includes("long-banner-soul-call") ? Math.max(1, refinedCapacity - 2) : refinedCapacity;
+      return `Mist Wraith: Souls ${stored}/${capacity} · Fresh corpses ${corpses} · Night Crossing ${stored >= 4 ? "ready" : `${stored}/4`}`;
     }
     if (runtime.gongfaId === "ironwood-wave-form") {
       const walls = runtime.authored.anchors.filter((anchor) => anchor.kind === "wall");
@@ -882,6 +893,9 @@ export class GameScene extends Phaser.Scene {
       }
       if (result.runtime.gongfaId === "flame-demon-body-art") {
         this.syncAsuraBodyMarker(result.runtime);
+      }
+      if (result.runtime.gongfaId === "mist-wraith-canon") {
+        this.syncMistSoulMarkers(result.runtime);
       }
       if (result.runtime.gongfaId === "moonfall-tide-ritual") {
         this.syncMoonfallMarker(result.runtime);
@@ -2270,6 +2284,15 @@ export class GameScene extends Phaser.Scene {
       if (result.runtime.gongfaId === "heavenfall-body-art") {
         this.syncHeavenfallBodyMarker(result.runtime);
       }
+      if (result.runtime.gongfaId === "ancient-tree-body-art") {
+        this.syncAncientTreeMarker(result.runtime);
+      }
+      if (result.runtime.gongfaId === "flame-demon-body-art") {
+        this.syncAsuraBodyMarker(result.runtime);
+      }
+      if (result.runtime.gongfaId === "mist-wraith-canon") {
+        this.syncMistSoulMarkers(result.runtime);
+      }
     }
     this.restorePrimaryRuntimeAdapter();
   }
@@ -2495,6 +2518,16 @@ export class GameScene extends Phaser.Scene {
 
       if (command.kind === "authored-line-strike") {
         this.fireAuthoredLineStrike(command);
+        return;
+      }
+
+      if (command.kind === "authored-mist-wraith-crossing") {
+        this.fireAuthoredMistWraithCrossing(command);
+        return;
+      }
+
+      if (command.kind === "authored-ghost-procession") {
+        this.fireAuthoredGhostProcession(command);
         return;
       }
 
@@ -2803,6 +2836,13 @@ export class GameScene extends Phaser.Scene {
         visual.lineTo(endX - normalX * offset, endY - normalY * offset);
         visual.strokePath();
       }
+    } else if (command.style === "soul-guiding-lantern") {
+      visual.lineStyle(7, identity.accent, 0.18);
+      visual.lineBetween(originX, originY, endX, endY);
+      visual.lineStyle(2, identity.secondary, 0.82);
+      visual.lineBetween(originX, originY, endX, endY);
+      visual.fillStyle(identity.secondary, 0.9);
+      visual.fillCircle(originX, originY, 7);
     } else {
       visual.lineStyle(Math.max(3, command.width * 0.38), identity.secondary, 0.9);
       visual.lineBetween(originX, originY, endX, endY);
@@ -2858,6 +2898,98 @@ export class GameScene extends Phaser.Scene {
       duration: command.style === "mist-wraith-crossing" ? 360 : 220,
       onComplete: () => visual.destroy()
     });
+  }
+
+  private fireAuthoredMistWraithCrossing(
+    command: Extract<GongfaRuntimeCommand, { kind: "authored-mist-wraith-crossing" }>
+  ): void {
+    const identity = getGongfaVisualIdentity(command.sourceGongfaId);
+    const path = this.applyGongfaEffectVisualHierarchy(this.add.graphics(), command.sourceGongfaId).setDepth(11);
+    path.lineStyle(Math.max(5, command.width * 0.28), identity.accent, 0.35);
+    path.beginPath();
+    path.moveTo(command.from.x, command.from.y);
+    command.waypoints.forEach((waypoint) => path.lineTo(waypoint.x, waypoint.y));
+    path.strokePath();
+    const wraith = createGongfaSigil(
+      this, command.from.x, command.from.y, command.sourceGongfaId,
+      12 + command.rankPower * 4, 0.94
+    ).setDepth(15);
+    const advance = (index: number): void => {
+      const waypoint = command.waypoints[index];
+      if (!waypoint) {
+        this.tweens.add({ targets: [wraith, path], alpha: 0, duration: 220, onComplete: () => {
+          wraith.destroy(); path.destroy();
+        }});
+        return;
+      }
+      this.tweens.add({
+        targets: wraith, x: waypoint.x, y: waypoint.y,
+        duration: 180 + index * 35, ease: "Sine.easeInOut",
+        onComplete: () => {
+          const enemy = this.getEnemyByCombatTargetId(command.targetIds[index] ?? -1);
+          if (enemy?.active && Phaser.Math.Distance.Between(enemy.x, enemy.y, waypoint.x, waypoint.y) <= command.width + 16) {
+            if (enemy.receiveDamage(command.damage)) this.resolveEnemyDeath(enemy);
+          }
+          advance(index + 1);
+        }
+      });
+    };
+    advance(0);
+    this.recordGongfaMotif(`${identity.motifId}:finite-wraith-crossing-rank-${Math.round(command.rankPower)}`);
+  }
+
+  private fireAuthoredGhostProcession(
+    command: Extract<GongfaRuntimeCommand, { kind: "authored-ghost-procession" }>
+  ): void {
+    const identity = getGongfaVisualIdentity(command.sourceGongfaId);
+    const pointToSegment = (px: number, py: number, ax: number, ay: number, bx: number, by: number): number => {
+      const dx = bx - ax; const dy = by - ay; const lengthSq = Math.max(1, dx * dx + dy * dy);
+      const projection = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lengthSq));
+      return Phaser.Math.Distance.Between(px, py, ax + dx * projection, ay + dy * projection);
+    };
+    command.routes.forEach((route, index) => {
+      this.time.delayedCall(index * 55, () => {
+        const road = this.applyGongfaEffectVisualHierarchy(this.add.graphics(), command.sourceGongfaId).setDepth(10);
+        road.lineStyle(
+          command.fate === "funeral" ? route.width : Math.max(6, route.width * 0.32),
+          command.fate === "funeral" ? identity.accent : identity.secondary,
+          command.fate === "funeral" ? 0.16 : 0.58
+        );
+        road.lineBetween(route.from.x, route.from.y, route.to.x, route.to.y);
+        const wraith = createGongfaSigil(
+          this, route.from.x, route.from.y, command.sourceGongfaId,
+          13 + route.rankPower * 5, 0.96
+        ).setDepth(16);
+        const travelMs = command.fate === "converge" ? 760 : 1050;
+        this.tweens.add({
+          targets: wraith, x: route.to.x, y: route.to.y, duration: travelMs, ease: "Sine.easeIn",
+          onComplete: () => {
+            for (const targetId of route.targetIds) {
+              const enemy = this.getEnemyByCombatTargetId(targetId);
+              if (!enemy?.active || pointToSegment(enemy.x, enemy.y, route.from.x, route.from.y, route.to.x, route.to.y) > route.width / 2 + 16) continue;
+              enemy.applySlow(command.slowMultiplier, command.slowDurationMs);
+              if (enemy.receiveDamage(route.damage)) this.resolveEnemyDeath(enemy);
+            }
+            this.tweens.add({ targets: wraith, alpha: 0, scale: 0.35, duration: 180, onComplete: () => wraith.destroy() });
+          }
+        });
+        if (command.fate === "funeral") {
+          for (let pulse = 0; pulse < 5; pulse += 1) {
+            this.time.delayedCall(pulse * 600, () => {
+              for (const enemy of (this.enemies.getChildren() as Enemy[]).filter((candidate) => candidate.active)) {
+                if (pointToSegment(enemy.x, enemy.y, route.from.x, route.from.y, route.to.x, route.to.y) <= route.width / 2 + 14) {
+                  enemy.applySlow(command.slowMultiplier, command.slowDurationMs);
+                }
+              }
+            });
+          }
+          this.tweens.add({ targets: road, alpha: 0, duration: 3000, onComplete: () => road.destroy() });
+        } else {
+          this.tweens.add({ targets: road, alpha: 0, duration: 1200, onComplete: () => road.destroy() });
+        }
+      });
+    });
+    this.recordGongfaMotif(`${identity.motifId}:night-crossing-${command.fate}`);
   }
 
   private fireAuthoredBloodCombination(
@@ -3060,6 +3192,67 @@ export class GameScene extends Phaser.Scene {
       marker.strokeCircle(0, 0, radius + 10);
     }
     marker.setPosition(this.player.x, this.player.y);
+  }
+
+  private syncMistSoulMarkers(runtime: GongfaRuntime): void {
+    const identity = getGongfaVisualIdentity(runtime.gongfaId);
+    const activeKeys = new Set<number>();
+    const learned = runtime.mastery.masteryLearnedIds;
+    const anchors = runtime.authored.anchors.filter((anchor) =>
+      anchor.kind === "corpse-soul" || anchor.kind === "stored-soul"
+    );
+    let storedIndex = 0;
+    for (const [index, soul] of anchors.entries()) {
+      const key = soul.targetId ?? -10_000 - index;
+      activeKeys.add(key);
+      const marker = this.mistSoulMarkers.get(key) ?? this.add.graphics().setDepth(15);
+      this.mistSoulMarkers.set(key, marker);
+      marker.clear();
+      const stored = soul.kind === "stored-soul";
+      const rankPower = soul.value;
+      const size = 7 + Math.min(3.5, rankPower) * 3;
+      marker.fillStyle(stored ? identity.secondary : identity.accent, stored ? 0.92 : 0.72);
+      if (rankPower >= 3) {
+        marker.fillTriangle(0, -size * 1.4, -size, size, size, size);
+      } else if (rankPower >= 2) {
+        marker.fillRoundedRect(-size, -size, size * 2, size * 2, 4);
+      } else {
+        marker.fillCircle(0, 0, size);
+      }
+      marker.lineStyle(2 + Math.min(2, rankPower), identity.secondary, 0.82);
+      marker.strokeCircle(0, 0, size + 5);
+      const baseLifetime = stored
+        ? (rankPower >= 3 ? 20_000 : rankPower >= 2 ? 14_000 : 9_000) *
+          (learned.includes("tread-corpse-guide-soul") ? 1.5 : 1) *
+          (learned.includes("lantern-returning-underworld-attendant") ? 1.45 : 1) *
+          Math.pow(1.18, learned.filter((id) => id === "quickened-covenant").length)
+        : (rankPower >= 3 ? 20_000 : rankPower >= 2 ? 12_000 : 6_000) *
+          Math.pow(1.16, learned.filter((id) => id === "remembered-oath").length);
+      const lifeRatio = Math.max(0, Math.min(1, (soul.remainingMs ?? baseLifetime) / baseLifetime));
+      marker.lineStyle(3, stored ? identity.secondary : identity.accent, 0.92);
+      marker.beginPath();
+      marker.arc(0, 0, size + 9, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * lifeRatio);
+      marker.strokePath();
+      if (stored) {
+        const trailAngle = (runtime.authored.lastMovementAngle ?? -Math.PI / 2) + Math.PI;
+        const row = Math.floor(storedIndex / 5);
+        const lateral = (storedIndex % 5 - 2) * 22;
+        const back = 42 + row * 28;
+        marker.setPosition(
+          this.player.x + Math.cos(trailAngle) * back + Math.cos(trailAngle + Math.PI / 2) * lateral,
+          this.player.y + Math.sin(trailAngle) * back + Math.sin(trailAngle + Math.PI / 2) * lateral
+        );
+        storedIndex += 1;
+      } else {
+        marker.setPosition(soul.x, soul.y);
+      }
+    }
+    for (const [key, marker] of this.mistSoulMarkers) {
+      if (!activeKeys.has(key)) {
+        marker.destroy();
+        this.mistSoulMarkers.delete(key);
+      }
+    }
   }
 
   private presentColdDebtSeals(

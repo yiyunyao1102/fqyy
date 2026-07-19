@@ -141,10 +141,10 @@ const zhGongfa: Record<GongfaId, GongfaTranslation> = {
     skill2: { name: "九阳归一", description: "九枚日兆齐备后固定九层巨印，将全部日兆凝为一次中心重击，不留下火场。" }
   },
   "mist-wraith-canon": {
-    name: "雾灵真典", lore: "召雾为灵，随身巡游，寒潮猎敌。", combatRole: "召唤雾灵自主索敌，以连续寒击压制并侵蚀敌群。", visualMotif: "淡青魂灯、流雾长尾与层叠水纹。",
-    skill1: { name: "雾灵侍从", description: "召唤环身水灵，各自寻找猎物并连续射出寒雾灵弹。" },
-    passive: { name: "幽潮灵契", resource: "灵契", description: "雾灵命中加深灵契，增加召唤数量并强化自主齐射。" },
-    skill2: { name: "百鬼夜潮", description: "召来强化雾灵列阵巡游，以追踪寒弹覆盖整片战场。" }
+    name: "雾灵真典", lore: "循尸引魂，一灯一渡；魂尽则雾散。", combatRole: "绕行新鲜尸处收取有时限、有品阶的水魂；每枚魂只化作一次固定路线的实体雾灵渡行。", visualMotif: "尸处品阶魂灯、身后有限魂列、从场界入场的一次性青白送葬路。",
+    skill1: { name: "有限雾灵", description: "消耗最旧的一枚水魂，沿已选目标形成一次实体渡行；无魂时只发出微弱引魂灯雾，帮助制造第一具尸体。" },
+    passive: { name: "水魂", resource: "存魂", description: "普通、精英、首领尸体留下不同寿命与强度的魂；必须亲自经过尸处收取，命中不会生魂。" },
+    skill2: { name: "百鬼夜渡", description: "至少四魂时，自动选择覆盖最佳的场界方向；全部存魂从边界各渡一次，并永久消耗。" }
   },
   "heavenfall-body-art": {
     name: "天坠锻体术", lore: "行身如星，直进聚质，循势坠天。", combatRole: "持续移动自动化为坠星身，以不中断的行进方向积累陨星质量，并沿当前航向自动落地。", visualMotif: "随质量扩张的金属星体、压缩行迹、落点预示线与星槊、天坑、返星三种终击。",

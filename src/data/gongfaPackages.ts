@@ -125,11 +125,11 @@ export const gongfaPackageCatalog: Record<GongfaId, GongfaPackageDefinition> = {
     skill2: { id: "heavenly-sun-descent", name: "Nine Suns in One", description: "At nine omens, fixes a huge nine-layer prediction and condenses every omen into one center-heavy impact.", tags: ["ritual", "fire", "explosive"] }
   },
   "mist-wraith-canon": {
-    combatRole: "Summoner pressure: orbiting familiars independently hunt targets and apply repeated drowning frost.",
-    visualMotif: "Pale-cyan spirit lanterns, flowing tails, and concentric mist ripples.",
-    skill1: { id: "mist-wraith-retinue", name: "Mist-Wraith Retinue", description: "Summons orbiting water spirits that choose their own prey and fire several chill bolts before dissolving.", tags: ["summon", "water", "projectile", "ailment"] },
-    passive: { name: "Ghost-Tide Covenant", resource: "Covenant", description: "Wraith hits deepen Covenant, calling additional spirits and strengthening their independent volleys." },
-    skill2: { id: "hundred-ghost-procession", name: "Hundred-Ghost Procession", description: "Calls a procession of empowered wraiths that circle the Cultivator and saturate the arena with seeking frost bolts.", tags: ["summon", "water", "projectile", "ailment"] }
+    combatRole: "A corpse-route summoner who collects short-lived ranked souls and spends each one on exactly one physical crossing.",
+    visualMotif: "Ranked cyan corpse lanterns, a finite trailing soul procession, and boundary-to-boundary funeral roads.",
+    skill1: { id: "mist-wraith-retinue", name: "Finite Wraith Crossing", description: "Consumes the oldest collected soul on one committed physical route; without a soul, a weak lantern beam helps create the first corpse.", tags: ["summon", "water", "ailment"] },
+    passive: { name: "Water Souls", resource: "Stored Souls", description: "Recent corpses leave expiring ranked souls that must be collected at their death sites; hits create nothing." },
+    skill2: { id: "hundred-ghost-procession", name: "Hundred-Ghost Night Crossing", description: "At four stored souls, every soul enters from an automatically chosen arena boundary, crosses once by its law, and is consumed.", tags: ["summon", "water", "ailment"] }
   },
   "heavenfall-body-art": {
     combatRole: "A temporary mobile meteor body whose uninterrupted heading builds Mass for an automatic movement-steered landing.",

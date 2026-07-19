@@ -47,7 +47,7 @@ implementation, testing, balance review, and future regression checks.
 | Myriad Beast Grove / 万兽灵林 | Yuling | Approved | Implemented and verified |
 | Ancient Tree Body Art / 古木锻体术 | Yuling | Approved | Implemented and verified |
 | Flame-Demon Body Art / 炎魔锻体术 | Youxuan | Approved | Implemented and verified |
-| Mist Wraith Canon / 雾灵真典 | Youxuan | Approved | Pending redesign |
+| Mist Wraith Canon / 雾灵真典 | Youxuan | Approved | Implemented and verified |
 | Frozen River Formation / 冰河伏阵 | Youxuan | Approved | Pending redesign |
 | Sword-Burial Formation / 葬剑伏阵 | Youxuan | Approved | Pending redesign |
 | Myriad-Root Lifebinding Canon / 万根寄命经 | Youxuan | Approved | Pending redesign |
@@ -1229,6 +1229,37 @@ and stronger but still receive only one crossing. There is no manual aiming.
 **Must not become:** Vermilion Bird's persistent companion, Myriad Beast's living pack,
 Sword Burial's lasting corpse sites, generic timed summons, homing frost bolts, or a
 hit-built summon meter.
+
+### Implemented tuning contract
+
+- Ordinary, elite, and boss deaths leave one soul worth `1/2/3` rank power for
+  `6/12/20s`. Hits, damage, and existing wraiths never create or duplicate souls.
+  Default pickup radius is `68`; Long Banner uses `140` but removes two of ten slots,
+  while Tread the Corpse uses `40`, multiplies power by `1.35`, and stored lifetime by
+  `1.5`.
+- Picked souls remain finite and keep individual expiry rings in a visible procession
+  behind the player. Ordinary, elite, and boss shapes differ. Uncollected markers stay
+  at the exact corpse position, so both the route and time loss are visible.
+- Without a stored soul, Soul-Guiding Lantern emits one weak `0.24×` non-wraith line.
+  Life-Seeking spends the oldest soul against the strongest close threat at `1.35×`
+  and caps storage at five; Wandering Mist spends one soul on up to three committed
+  ordinary waypoints at `0.62×`; Lantern-Returning never spends a soul on Skill 1,
+  adds three slots, extends storage by `1.45×`, and retains only the weak lantern.
+- Long Banner reduces wraith damage to `80%`. Halt the Lantern requires `0.8s`
+  stationary beside an ordinary corpse, resets its attempt on movement or leaving,
+  and upgrades that one soul by one rank without duplication. Elite and boss souls
+  cannot receive the vigil upgrade.
+- Hundred-Ghost Night Crossing requires at least four stored souls. It selects among
+  horizontal, vertical, and diagonal boundary orientations by the smallest enemy
+  cross-field spread. Every soul receives one fixed boundary route, rank-scaled width
+  and damage, then the entire stored procession is consumed.
+- Hundred Ghosts uses parallel lanes and assigns each enemy to at most one lane;
+  Myriad Souls fixes every route on the strongest target and never retargets after
+  movement or death; Nether Funeral deals only `38%` immediate damage and leaves each
+  broad road pulsing a `0.32×` movement slow for `3s`.
+- The HUD exposes stored capacity, fresh corpse count, and the four-soul threshold.
+  There are no orbiting familiars, seeking frost bolts, Covenant stacks, or generic
+  timed summon effects in the active runtime; legacy Surge saves migrate safely.
 
 ---
 

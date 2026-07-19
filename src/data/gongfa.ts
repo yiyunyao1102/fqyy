@@ -436,7 +436,7 @@ export const gongfaConfigs: Record<GongfaId, GongfaConfig> = {
     requiredRoots: ["water"],
     pattern: "summon",
     title: "Mist Wraith Canon",
-    lore: "Call loyal mist wraiths that orbit, hunt, and drown marked prey in lingering cold.",
+    lore: "Route through fresh corpses, carry their ranked water souls, and spend each on one irreversible spectral crossing.",
     projectileTexture: "qi-bolt",
     tint: 0x75d9ed,
     stages: {
@@ -597,7 +597,7 @@ export function getGongfaSkillTags(gongfaId: GongfaId): GongfaTag[] {
     case "nine-sun-calamity-seal":
       return ["ritual", "fire", "explosive", "ailment"];
     case "mist-wraith-canon":
-      return ["summon", "water", "projectile", "ailment"];
+      return ["summon", "water", "ailment"];
     case "heavenfall-body-art":
       return ["melee", "metal", "defensive", "reflect"];
     case "thousand-root-formation":
