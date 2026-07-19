@@ -46,7 +46,7 @@ export const gongfaVisualIdentities: Record<GongfaId, GongfaVisualIdentity> = {
   "nine-sun-calamity-seal": { motifId: "nine-sun-calamity", label: "Descending calamity sun", geometry: "calamity", accent: 0xffc247, secondary: 0xff6847, spokes: 9, trailStyle: "converging solar rays" },
   "mist-wraith-canon": { motifId: "mist-wraith-retinue", label: "Orbiting mist retinue", geometry: "wraiths", accent: 0x75d9ed, secondary: 0xe5fbff, spokes: 6, trailStyle: "curling spirit tails" },
   "heavenfall-body-art": { motifId: "heavenfall-impact", label: "Falling-star body seal", geometry: "impact", accent: 0xf0d38a, secondary: 0xffffff, spokes: 8, trailStyle: "forged impact arcs" },
-  "thousand-root-formation": { motifId: "thousand-root-array", label: "Linked root formation", geometry: "formation", accent: 0x82c96b, secondary: 0xd9ed9a, spokes: 7, trailStyle: "branching formation script" },
+  "thousand-root-formation": { motifId: "lifebound-root-lineages", label: "Living host root lineages", geometry: "roots", accent: 0x5fbd63, secondary: 0xdff0a0, spokes: 5, trailStyle: "body-bursting roots converging into one mother" },
   "flame-demon-body-art": { motifId: "furnace-blood-fists", label: "Furnace-blood combination", geometry: "impact", accent: 0xe94b35, secondary: 0xffb14f, spokes: 6, trailStyle: "horned flame impact arcs" },
   "vermilion-bird-covenant": { motifId: "vermilion-spirit-host", label: "Vermilion spirit host", geometry: "wraiths", accent: 0xff6545, secondary: 0xffd168, spokes: 7, trailStyle: "looping phoenix tails" },
   "frozen-river-formation": { motifId: "underice-river-array", label: "Under-ice river array", geometry: "formation", accent: 0x69cfe8, secondary: 0xe1fbff, spokes: 6, trailStyle: "cracked frost channels" },

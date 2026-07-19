@@ -69,6 +69,7 @@ describe("localization", () => {
     expect(localizeMasteryChoice("zh-CN", "execution-seal").name).toBe("诛敌剑印");
     expect(localizeMasteryChoice("zh-CN", "lone-bridge-final-crossing").name).toBe("独桥绝渡");
     expect(localizeMasteryChoice("zh-CN", "compensating-ferry").name).toBe("代偿轮渡");
+    expect(localizeMasteryChoice("zh-CN", "wither-and-flourish-leave-a-seed").name).toBe("枯荣留种");
 
     expect(localizeGongfa("en", "yujian-jue").name).toBe("Yujian Jue");
     expect(localizeGongfaPackage("en", "yujian-jue").skill1.name).toBe("Flying Sword Volley");

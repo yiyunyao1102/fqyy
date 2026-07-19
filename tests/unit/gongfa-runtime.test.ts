@@ -517,6 +517,14 @@ describe("Gongfa runtime", () => {
           { kind: "seal", sealRole: "origin", chainId: 2, targetId: 52, x: -20, y: 0, value: 1 }
         );
       }
+      if (gongfaId === "thousand-root-formation") {
+        runtime.authored.anchors.push(
+          { kind: "infection", targetId: 91, x: -60, y: 0, value: 7000, infectionStage: 2 },
+          { kind: "infection", targetId: 92, x: -20, y: 0, value: 7000, infectionStage: 2 },
+          { kind: "infection", targetId: 93, x: 20, y: 0, value: 3000, infectionStage: 1 },
+          { kind: "infection", targetId: 94, x: 60, y: 0, value: 0, infectionStage: 0 }
+        );
+      }
       const result =
         plan?.trigger === "cycle"
           ? advanceGongfaRuntime(runtime, {
@@ -541,6 +549,11 @@ describe("Gongfa runtime", () => {
                 targets: gongfaId === "frozen-river-formation" ? [
                   { targetId: 51, x: 20, y: 0, healthRatio: 1, rank: "elite" },
                   { targetId: 52, x: -20, y: 0, healthRatio: 0.5, rank: "ordinary" }
+                ] : gongfaId === "thousand-root-formation" ? [
+                  { targetId: 91, x: -60, y: 0, healthRatio: 1, rank: "elite" },
+                  { targetId: 92, x: -20, y: 0, healthRatio: 0.8, rank: "ordinary" },
+                  { targetId: 93, x: 20, y: 0, healthRatio: 0.6, rank: "ordinary" },
+                  { targetId: 94, x: 60, y: 0, healthRatio: 0.4, rank: "ordinary" }
                 ] : undefined
               });
 

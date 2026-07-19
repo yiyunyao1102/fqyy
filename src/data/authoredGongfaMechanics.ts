@@ -402,6 +402,7 @@ export interface AuthoredGongfaRuntimeState {
     sealed?: boolean;
     sealRole?: "origin" | "crossing" | "waiting";
     chainId?: number;
+    infectionStage?: 0 | 1 | 2;
   }>;
 }
 

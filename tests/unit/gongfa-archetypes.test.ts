@@ -12,7 +12,7 @@ const archetypes = [
   ["nine-sun-calamity-seal", "ritual-impact", "heavenly-sun-descent", "heavenly-sun-descent"],
   ["mist-wraith-canon", "authored-line-strike", "hundred-ghost-procession", "authored-line-strike"],
   ["heavenfall-body-art", "melee-combination", "star-breaking-descent", "star-breaking-descent"],
-  ["thousand-root-formation", "root-trap-array", "myriad-root-killing-field", "myriad-root-killing-field"],
+  ["thousand-root-formation", "authored-root-infection", "myriad-root-killing-field", "authored-root-ancestor"],
   ["flame-demon-body-art", "authored-blood-combination", "asura-conflagration", "star-breaking-descent"],
   ["vermilion-bird-covenant", "summon-wraiths", "vermilion-host-descent", "hundred-ghost-procession"],
   ["frozen-river-formation", "authored-cold-debt-placement", "frozen-river-prison", "authored-frozen-river-network"],
@@ -63,7 +63,11 @@ describe("expanded Gongfa archetypes", () => {
           { kind: "seal", sealRole: "origin", chainId: 2, targetId: 42, x: -20, y: 0, value: 1 }
         );
       }
-      const command = planGongfaAttack(runtime, 0)[0];
+      const command = planGongfaAttack(runtime, 0, {
+        playerX: 0,
+        playerY: 0,
+        targets: [{ targetId: 91, x: 100, y: 0, healthRatio: 1, rank: "ordinary" }]
+      })[0];
       expect(command?.kind).toBe(expectedKind);
       return command?.kind;
     });
@@ -86,6 +90,14 @@ describe("expanded Gongfa archetypes", () => {
           { kind: "seal", sealRole: "origin", chainId: 2, targetId: 42, x: -20, y: 0, value: 1 }
         );
       }
+      if (gongfaId === "thousand-root-formation") {
+        runtime.authored.anchors.push(
+          { kind: "infection", targetId: 91, x: -60, y: 0, value: 7000, infectionStage: 2 },
+          { kind: "infection", targetId: 92, x: -20, y: 0, value: 7000, infectionStage: 2 },
+          { kind: "infection", targetId: 93, x: 20, y: 0, value: 3000, infectionStage: 1 },
+          { kind: "infection", targetId: 94, x: 60, y: 0, value: 0, infectionStage: 0 }
+        );
+      }
       expect(getRank10Skill2Id(gongfaId)).toBe(expectedSkill2);
       const result = advanceGongfaRuntime(runtime, {
         kind: "skill2",
@@ -96,6 +108,11 @@ describe("expanded Gongfa archetypes", () => {
         targets: gongfaId === "frozen-river-formation" ? [
           { targetId: 41, x: 20, y: 0, healthRatio: 1, rank: "elite" },
           { targetId: 42, x: -20, y: 0, healthRatio: 0.5, rank: "ordinary" }
+        ] : gongfaId === "thousand-root-formation" ? [
+          { targetId: 91, x: -60, y: 0, healthRatio: 1, rank: "elite" },
+          { targetId: 92, x: -20, y: 0, healthRatio: 0.8, rank: "ordinary" },
+          { targetId: 93, x: 20, y: 0, healthRatio: 0.6, rank: "ordinary" },
+          { targetId: 94, x: 60, y: 0, healthRatio: 0.4, rank: "ordinary" }
         ] : undefined
       });
       expect(result.commands[0]?.kind).toBe(expectedCommand);
@@ -136,6 +153,10 @@ describe("expanded Gongfa archetypes", () => {
       }
       if (command.kind === "authored-cold-debt-placement") {
         expect(command.seals.length).toBeGreaterThanOrEqual(2);
+        return [];
+      }
+      if (command.kind === "authored-root-infection") {
+        expect(command.hosts).toHaveLength(1);
         return [];
       }
       if (command.kind === "root-trap-array") {

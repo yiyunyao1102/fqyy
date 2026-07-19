@@ -153,10 +153,10 @@ const zhGongfa: Record<GongfaId, GongfaTranslation> = {
     skill2: { name: "碎星天坠", description: "以巨力砸落身周，并在短时内将来势化作猛烈震波返还。" }
   },
   "thousand-root-formation": {
-    name: "千根伏阵", lore: "植印于地，待敌踏入，万根齐发。", combatRole: "布阵控场，以持续根印封锁追击路线并召根杀敌。", visualMotif: "翠玉阵眼、分枝根纹与脉动地环。",
-    skill1: { name: "伏根印阵", description: "在敌人行路处种下多枚根印，阵成后持续脉动伤敌。" },
-    passive: { name: "静候萌发", resource: "生势", description: "每个被根印困住的新敌都会滋养阵势，增加后续根印与持续时间。" },
-    skill2: { name: "万根诛邪阵", description: "使战场化为宽广根网，多处持久伏阵依序脉动绞杀。" }
+    name: "万根寄命经", lore: "寄一根于一命，以宿主存亡养成根脉传承。", combatRole: "寄生控场，维持有限活体根脉成熟，并借宿主死亡完成一脉一传。", visualMotif: "宿主体内翠种、破体根枝与爬行汇合的根母。",
+    skill1: { name: "寄命根种", description: "将一条有限根脉植入合适的活体宿主；只有宿主存活时间能令其成长。" },
+    passive: { name: "一脉一传", resource: "活体根脉", description: "宿主死亡只释放一枚种子转投另一活体；过早死亡会重置成熟度。" },
+    skill2: { name: "万根同祖", description: "令至少四条寄生根破体而出，沿宿主决定的路线爬行，并一次汇成根母。" }
   },
   "flame-demon-body-art": {
     name: "炎魔锻体术", lore: "熔血为炉，怒火铸身。", combatRole: "贴身猛攻，以连拳与反震积怒，终以炎爆重击收式。", visualMotif: "血红炉拳、魔角炎弧与焦黑震环。",
@@ -934,43 +934,52 @@ const zhMasteryOverrides: Record<string, { name: string; lore?: string }> = {
   "volatile-embeds": { name: "易爆埋针" },
   "sustained-crucible": { name: "恒压熔炉" },
   "resonant-crucible": { name: "共鸣熔炉" },
-  "crucible-nova": { name: "熔炉新星" }
-  ,"life-seeking-fierce-wraith": { name: "索命厉魂" }
-  ,"wandering-mist-host": { name: "游雾群鬼" }
-  ,"lantern-returning-underworld-attendant": { name: "归灯冥侍" }
-  ,"long-banner-soul-call": { name: "长幡招魂" }
-  ,"tread-corpse-guide-soul": { name: "踏尸引魄" }
-  ,"halt-lantern-keep-vigil": { name: "停灯守夜" }
-  ,"hundred-ghosts-cross-river": { name: "百鬼横江" }
-  ,"myriad-souls-ask-for-life": { name: "万魂问命" }
-  ,"nether-river-funeral": { name: "冥河送葬" }
-  ,"lone-grave-great-que": { name: "孤冢巨阙" }
-  ,"collective-burial-sword-mound": { name: "合葬剑丘" }
-  ,"field-path-sword-forest": { name: "阡陌剑林" }
-  ,"rise-at-living-presence": { name: "见生即起" }
-  ,"recognize-calamity-leave-sheath": { name: "识煞出鞘" }
-  ,"seal-grave-treading-stars": { name: "踏罡封冢" }
-  ,"gravefield-cuts-across": { name: "墓野横绝" }
-  ,"myriad-edges-ask-the-leader": { name: "万锋问首" }
-  ,"old-roads-return-the-soul": { name: "故道返魂" }
-  ,"one-horn-army-breaker": { name: "独角破军" }
-  ,"six-armed-yaksha": { name: "六臂夜叉" }
-  ,"hungry-ghost-soul-pursuit": { name: "饿鬼逐魂" }
-  ,"meridian-locking-heart-guard": { name: "锁脉护心" }
-  ,"blood-debt-repaid-at-the-end": { name: "血债终偿" }
-  ,"life-flame-without-return": { name: "命火无归" }
-  ,"undying-asura": { name: "不灭修罗" }
-  ,"world-burning-asura": { name: "焚世修罗" }
-  ,"life-hunting-asura": { name: "猎命修罗" }
-  ,"lone-bridge-final-crossing": { name: "独桥绝渡" }
-  ,"three-ford-branching-flow": { name: "三津分流" }
-  ,"curving-nether-river": { name: "回湾冥河" }
-  ,"cold-debt-pursues-the-strong": { name: "寒债逐强" }
-  ,"cold-debt-pursues-the-weak": { name: "寒债逐弱" }
-  ,"cold-debt-migrates-afar": { name: "寒债远徙" }
-  ,"all-guilty-share-the-cold": { name: "众罪同寒" }
-  ,"collective-liability": { name: "连坐同伤" }
-  ,"compensating-ferry": { name: "代偿轮渡" }
+  "crucible-nova": { name: "熔炉新星" },
+  "life-seeking-fierce-wraith": { name: "索命厉魂" },
+  "wandering-mist-host": { name: "游雾群鬼" },
+  "lantern-returning-underworld-attendant": { name: "归灯冥侍" },
+  "long-banner-soul-call": { name: "长幡招魂" },
+  "tread-corpse-guide-soul": { name: "踏尸引魄" },
+  "halt-lantern-keep-vigil": { name: "停灯守夜" },
+  "hundred-ghosts-cross-river": { name: "百鬼横江" },
+  "myriad-souls-ask-for-life": { name: "万魂问命" },
+  "nether-river-funeral": { name: "冥河送葬" },
+  "lone-grave-great-que": { name: "孤冢巨阙" },
+  "collective-burial-sword-mound": { name: "合葬剑丘" },
+  "field-path-sword-forest": { name: "阡陌剑林" },
+  "rise-at-living-presence": { name: "见生即起" },
+  "recognize-calamity-leave-sheath": { name: "识煞出鞘" },
+  "seal-grave-treading-stars": { name: "踏罡封冢" },
+  "gravefield-cuts-across": { name: "墓野横绝" },
+  "myriad-edges-ask-the-leader": { name: "万锋问首" },
+  "old-roads-return-the-soul": { name: "故道返魂" },
+  "one-horn-army-breaker": { name: "独角破军" },
+  "six-armed-yaksha": { name: "六臂夜叉" },
+  "hungry-ghost-soul-pursuit": { name: "饿鬼逐魂" },
+  "meridian-locking-heart-guard": { name: "锁脉护心" },
+  "blood-debt-repaid-at-the-end": { name: "血债终偿" },
+  "life-flame-without-return": { name: "命火无归" },
+  "undying-asura": { name: "不灭修罗" },
+  "world-burning-asura": { name: "焚世修罗" },
+  "life-hunting-asura": { name: "猎命修罗" },
+  "lone-bridge-final-crossing": { name: "独桥绝渡" },
+  "three-ford-branching-flow": { name: "三津分流" },
+  "curving-nether-river": { name: "回湾冥河" },
+  "cold-debt-pursues-the-strong": { name: "寒债逐强" },
+  "cold-debt-pursues-the-weak": { name: "寒债逐弱" },
+  "cold-debt-migrates-afar": { name: "寒债远徙" },
+  "all-guilty-share-the-cold": { name: "众罪同寒" },
+  "collective-liability": { name: "连坐同伤" },
+  "compensating-ferry": { name: "代偿轮渡" },
+  "heart-piercing-killing-root": { name: "穿心杀根" },
+  "body-borrowing-branch-root": { name: "借躯蔓枝" },
+  "bone-locking-coiling-root": { name: "锁骨盘根" },
+  "new-sprout-pursues-the-crowd": { name: "新芽逐众" },
+  "old-root-seizes-a-body": { name: "老根夺舍" },
+  "strong-seed-chooses-its-host": { name: "强种择主" },
+  "many-mouths-devour-life": { name: "众口噬生" },
+  "one-heart-strangles-life": { name: "独心绞命" },
+  "wither-and-flourish-leave-a-seed": { name: "枯荣留种" }
 };
 
 let zhReplacementPairs: Array<[string, string]> | null = null;

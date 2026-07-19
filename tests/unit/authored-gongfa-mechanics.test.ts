@@ -289,6 +289,83 @@ describe("approved Gongfa mechanic contracts", () => {
     expect(handedOff.runtime.authored.cycleCount).toBe(1);
   });
 
+  it("ages one living Root lineage through one-shot Seed, Sprout, and Mature transitions", () => {
+    const runtime = createGongfaRuntime({ gongfaId: "thousand-root-formation" });
+    const [infection] = planGongfaAttack(runtime, 0, {
+      playerX: 0,
+      playerY: 0,
+      targets: [{ targetId: 101, x: 80, y: 0, healthRatio: 1, rank: "elite" }]
+    });
+    expect(infection).toMatchObject({ kind: "authored-root-infection" });
+    expect(runtime.authored.anchors).toEqual([
+      expect.objectContaining({ kind: "infection", targetId: 101, value: 0, infectionStage: 0 })
+    ]);
+
+    let grown = advanceGongfaRuntime(runtime, {
+      kind: "tick", deltaMs: 3000, nearbyEnemyCount: 1,
+      targets: [{ targetId: 101, x: 84, y: 2, healthRatio: 1, rank: "elite" }],
+      learnedMasteryIds: ["body-borrowing-branch-root"]
+    });
+    expect(grown.commands).toEqual([
+      expect.objectContaining({ kind: "authored-root-stage", targetId: 101, stage: 1, maxSplashTargets: 0 })
+    ]);
+    grown = advanceGongfaRuntime(grown.runtime, {
+      kind: "tick", deltaMs: 4000, nearbyEnemyCount: 4,
+      targets: [{ targetId: 101, x: 88, y: 3, healthRatio: 0.8, rank: "elite" }],
+      learnedMasteryIds: ["body-borrowing-branch-root"]
+    });
+    expect(grown.commands).toEqual([
+      expect.objectContaining({ kind: "authored-root-stage", stage: 2, maxSplashTargets: 3 })
+    ]);
+    expect(grown.runtime.authored.anchors[0]).toMatchObject({ value: 7000, infectionStage: 2, x: 88, y: 3 });
+  });
+
+  it("transfers exactly one Root lineage with the selected R6 inheritance law", () => {
+    const runtime = createGongfaRuntime({ gongfaId: "thousand-root-formation" });
+    runtime.mastery.masteryLearnedIds = ["old-root-seizes-a-body"];
+    runtime.authored.anchors.push({
+      kind: "infection", targetId: 111, x: 0, y: 0, value: 7000, infectionStage: 2
+    });
+    const successor = advanceGongfaRuntime(runtime, {
+      kind: "enemy-death", targetId: 111, x: 0, y: 0, rank: "elite",
+      velocityX: 0, velocityY: 0, playerX: 0, playerY: 0,
+      targets: [{ targetId: 112, x: 90, y: 0, healthRatio: 0.7, rank: "ordinary" }]
+    });
+    expect(successor.commands).toEqual([
+      expect.objectContaining({ kind: "authored-root-infection", hosts: [expect.objectContaining({ targetId: 112 })] })
+    ]);
+    expect(successor.runtime.authored.anchors).toEqual([
+      expect.objectContaining({ targetId: 112, value: 3500, infectionStage: 1 })
+    ]);
+  });
+
+  it("merges four living lineages once and preserves only the approved Wither seed", () => {
+    const runtime = createGongfaRuntime({ gongfaId: "thousand-root-formation" });
+    runtime.authored.anchors.push(
+      { kind: "infection", targetId: 121, x: -60, y: 0, value: 7000, infectionStage: 2 },
+      { kind: "infection", targetId: 122, x: -20, y: 0, value: 7000, infectionStage: 2 },
+      { kind: "infection", targetId: 123, x: 20, y: 0, value: 3000, infectionStage: 1 },
+      { kind: "infection", targetId: 124, x: 60, y: 0, value: 0, infectionStage: 0 }
+    );
+    const targets = [
+      { targetId: 121, x: -60, y: 0, healthRatio: 0.5, rank: "elite" as const },
+      { targetId: 122, x: -20, y: 0, healthRatio: 0.4, rank: "ordinary" as const },
+      { targetId: 123, x: 20, y: 0, healthRatio: 0.8, rank: "ordinary" as const },
+      { targetId: 124, x: 60, y: 0, healthRatio: 0.3, rank: "ordinary" as const }
+    ];
+    const merged = advanceGongfaRuntime(runtime, {
+      kind: "skill2", skill2Id: "myriad-root-killing-field", nearbyEnemyCount: 4,
+      eligibleTargetCount: 4, hasMovementDirection: true,
+      learnedMasteryIds: ["wither-and-flourish-leave-a-seed"], targets
+    });
+    expect(merged.commands).toEqual([
+      expect.objectContaining({ kind: "authored-root-ancestor", fate: "wither-seed" })
+    ]);
+    expect(merged.runtime.authored.anchors).toEqual([
+      expect.objectContaining({ kind: "infection", targetId: 123, value: 7000, infectionStage: 2 })
+    ]);
+  });
+
   it("persists authored inventories while resetting transient movement continuity", () => {
     let collection = learnGongfa(createGongfaCollectionRuntime(), "sword-burial-formation", true);
     const runtime = collection.byId["sword-burial-formation"]!;

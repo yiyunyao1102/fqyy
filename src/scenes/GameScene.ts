@@ -261,6 +261,7 @@ export class GameScene extends Phaser.Scene {
   private bloodCombinationSerial = 0;
   private readonly skill2HitTargets = new Map<number, Set<number>>();
   private readonly activeProjectileImpacts = new Set<Phaser.GameObjects.Sprite>();
+  private readonly rootInfectionMarkers = new Map<number, Phaser.GameObjects.Graphics>();
   private recentGongfaMotifs: string[] = [];
   private readonly activePickupEffects = new Set<Phaser.GameObjects.Sprite>();
   private readonly activeLingcaoEffects = new Set<Phaser.GameObjects.Sprite>();
@@ -707,6 +708,9 @@ export class GameScene extends Phaser.Scene {
       });
       this.adoptPrimaryRuntime(result.runtime);
       this.executeGongfaRuntimeCommands(result.commands, result.runtime);
+      if (result.runtime.gongfaId === "thousand-root-formation") {
+        this.syncRootInfectionMarkers(result.runtime);
+      }
     }
     this.restorePrimaryRuntimeAdapter();
     this.spawnOrb(dropX, dropY, xpDrop);
@@ -1866,6 +1870,9 @@ export class GameScene extends Phaser.Scene {
       });
       this.adoptPrimaryRuntime(result.runtime);
       this.executeGongfaRuntimeCommands(result.commands, result.runtime);
+      if (result.runtime.gongfaId === "thousand-root-formation") {
+        this.syncRootInfectionMarkers(result.runtime);
+      }
     }
     this.restorePrimaryRuntimeAdapter();
   }
@@ -2156,12 +2163,50 @@ export class GameScene extends Phaser.Scene {
       });
       this.adoptPrimaryRuntime(result.runtime);
       this.executeGongfaRuntimeCommands(result.commands, result.runtime);
+      if (result.runtime.gongfaId === "thousand-root-formation") {
+        this.syncRootInfectionMarkers(result.runtime);
+      }
     }
     this.restorePrimaryRuntimeAdapter();
   }
 
   private getEnemiesWithinRadius(radius: number): Enemy[] {
     return this.getEnemiesWithinRadiusFrom(this.player.x, this.player.y, radius);
+  }
+
+  private syncRootInfectionMarkers(runtime: GongfaRuntime): void {
+    const identity = getGongfaVisualIdentity(runtime.gongfaId);
+    const activeIds = new Set<number>();
+    for (const infection of runtime.authored.anchors.filter((anchor) =>
+      anchor.kind === "infection" && anchor.targetId !== undefined
+    )) {
+      const targetId = infection.targetId!;
+      activeIds.add(targetId);
+      let marker = this.rootInfectionMarkers.get(targetId);
+      if (!marker) {
+        marker = this.add.graphics().setDepth(15);
+        this.rootInfectionMarkers.set(targetId, marker);
+      }
+      const stage = infection.infectionStage ?? 0;
+      marker.clear();
+      marker.fillStyle(stage === 2 ? identity.secondary : identity.accent, 0.88);
+      marker.fillEllipse(0, -18, 5 + stage * 3, 9 + stage * 4);
+      marker.lineStyle(1.5 + stage, identity.accent, 0.78);
+      const branches = 2 + stage * 2;
+      for (let branch = 0; branch < branches; branch += 1) {
+        const side = branch % 2 === 0 ? -1 : 1;
+        const tier = Math.floor(branch / 2) + 1;
+        marker.lineBetween(0, -16, side * (6 + tier * 4), -20 - tier * 5);
+      }
+      const host = this.getEnemyByCombatTargetId(targetId);
+      marker.setPosition(host?.active ? host.x : infection.x, host?.active ? host.y : infection.y);
+      marker.setAlpha(0.62 + stage * 0.16);
+    }
+    for (const [targetId, marker] of this.rootInfectionMarkers) {
+      if (activeIds.has(targetId)) continue;
+      marker.destroy();
+      this.rootInfectionMarkers.delete(targetId);
+    }
   }
 
   private getEnemiesWithinRadiusFrom(x: number, y: number, radius: number): Enemy[] {
@@ -2364,6 +2409,21 @@ export class GameScene extends Phaser.Scene {
 
       if (command.kind === "authored-frozen-river-network") {
         this.fireAuthoredFrozenRiverNetwork(command);
+        return;
+      }
+
+      if (command.kind === "authored-root-infection") {
+        this.presentRootInfection(command);
+        return;
+      }
+
+      if (command.kind === "authored-root-stage") {
+        this.fireAuthoredRootStage(command);
+        return;
+      }
+
+      if (command.kind === "authored-root-ancestor") {
+        this.fireAuthoredRootAncestor(command);
         return;
       }
 
@@ -2825,6 +2885,141 @@ export class GameScene extends Phaser.Scene {
       const isBoss = enemy.role === "tribulation-boss";
       enemy.applySlow(hardFreezeOrdinary && !isBoss ? 0.03 : isBoss ? Math.max(0.42, slowMultiplier) : slowMultiplier,
         isBoss ? slowDurationMs * 1.25 : slowDurationMs);
+      if (enemy.receiveDamage(damage * (isBoss ? bossDamageScale : 1))) this.resolveEnemyDeath(enemy);
+    }
+  }
+
+  private presentRootInfection(
+    command: Extract<GongfaRuntimeCommand, { kind: "authored-root-infection" }>
+  ): void {
+    const identity = getGongfaVisualIdentity(command.sourceGongfaId);
+    for (const host of command.hosts) {
+      const seed = this.applyGongfaEffectVisualHierarchy(this.add.graphics(), command.sourceGongfaId).setDepth(13);
+      seed.fillStyle(identity.secondary, 0.92);
+      seed.fillEllipse(host.x, host.y - 7, 7, 12);
+      seed.lineStyle(2, identity.accent, 0.8);
+      seed.beginPath();
+      seed.moveTo(host.x, host.y - 3);
+      seed.lineTo(host.x - 8, host.y - 16);
+      seed.lineTo(host.x - 2, host.y - 12);
+      seed.moveTo(host.x, host.y - 5);
+      seed.lineTo(host.x + 8, host.y - 18);
+      seed.lineTo(host.x + 3, host.y - 13);
+      seed.strokePath();
+      this.tweens.add({
+        targets: seed, alpha: 0, scale: 1.35, y: -8, duration: 600,
+        onComplete: () => seed.destroy()
+      });
+    }
+    this.recordGongfaMotif(`${identity.motifId}:living-root-seed`);
+  }
+
+  private fireAuthoredRootStage(
+    command: Extract<GongfaRuntimeCommand, { kind: "authored-root-stage" }>
+  ): void {
+    const identity = getGongfaVisualIdentity(command.sourceGongfaId);
+    const host = this.getEnemyByCombatTargetId(command.targetId);
+    const roots = this.applyGongfaEffectVisualHierarchy(this.add.graphics(), command.sourceGongfaId).setDepth(12);
+    roots.lineStyle(command.stage === 2 ? 5 : 3, identity.accent, 0.88);
+    const branchCount = command.stage === 2 ? 7 : 4;
+    for (let branch = 0; branch < branchCount; branch += 1) {
+      const angle = branch / branchCount * Math.PI * 2 + command.targetId * 0.17;
+      const reach = command.radius * (0.62 + (branch % 3) * 0.16);
+      roots.beginPath();
+      roots.moveTo(command.x, command.y);
+      roots.lineTo(
+        command.x + Math.cos(angle - 0.18) * reach * 0.48,
+        command.y + Math.sin(angle - 0.18) * reach * 0.48
+      );
+      roots.lineTo(command.x + Math.cos(angle) * reach, command.y + Math.sin(angle) * reach);
+      roots.strokePath();
+    }
+    if (host?.active) {
+      if (command.slowMultiplier !== undefined && command.slowDurationMs !== undefined) {
+        const isBoss = host.role === "tribulation-boss";
+        host.applySlow(
+          command.immobilizeOrdinary && !isBoss ? 0.03 : isBoss ? Math.max(0.38, command.slowMultiplier) : command.slowMultiplier,
+          command.slowDurationMs
+        );
+      }
+      if (host.receiveDamage(command.damage)) this.resolveEnemyDeath(host);
+    }
+    if (command.maxSplashTargets > 0) {
+      (this.enemies.getChildren() as Enemy[])
+        .filter((enemy) => enemy.active && enemy.combatTargetId !== command.targetId &&
+          Phaser.Math.Distance.Between(command.x, command.y, enemy.x, enemy.y) <= command.radius)
+        .sort((a, b) =>
+          Phaser.Math.Distance.Between(command.x, command.y, a.x, a.y) -
+          Phaser.Math.Distance.Between(command.x, command.y, b.x, b.y))
+        .slice(0, command.maxSplashTargets)
+        .forEach((enemy) => {
+          if (enemy.receiveDamage(command.damage * 0.72)) this.resolveEnemyDeath(enemy);
+        });
+    }
+    this.tweens.add({ targets: roots, alpha: 0, scale: 1.08, duration: 460, onComplete: () => roots.destroy() });
+    this.recordGongfaMotif(`${identity.motifId}:host-stage-${command.stage}`);
+  }
+
+  private fireAuthoredRootAncestor(
+    command: Extract<GongfaRuntimeCommand, { kind: "authored-root-ancestor" }>
+  ): void {
+    const identity = getGongfaVisualIdentity(command.sourceGongfaId);
+    const roots = this.applyGongfaEffectVisualHierarchy(this.add.graphics(), command.sourceGongfaId).setDepth(11);
+    roots.lineStyle(command.fate === "one-heart" ? 7 : 5, identity.accent, 0.8);
+    const damaged = new Set<number>();
+    command.hosts.forEach((host, index) => {
+      const route = command.fate === "many-mouths"
+        ? command.routeTargets[index % Math.max(1, command.routeTargets.length)]
+        : command.fate === "one-heart"
+          ? command.routeTargets[0]
+          : undefined;
+      const waypoint = route ?? command.mergeTarget;
+      roots.beginPath();
+      roots.moveTo(host.x, host.y);
+      const bendX = (host.x + waypoint.x) / 2 + (index % 2 === 0 ? 24 : -24);
+      const bendY = (host.y + waypoint.y) / 2 + (index % 2 === 0 ? -18 : 18);
+      roots.lineTo(bendX, bendY);
+      roots.lineTo(waypoint.x, waypoint.y);
+      if (route) roots.lineTo(command.mergeTarget.x, command.mergeTarget.y);
+      roots.strokePath();
+      this.damageEnemiesAlongRootSegment(host, waypoint, 24, command.damage, damaged,
+        command.fate === "many-mouths" ? 0.55 : 1);
+      if (route) {
+        this.damageEnemiesAlongRootSegment(route, command.mergeTarget, 24, command.damage, damaged,
+          command.fate === "many-mouths" ? 0.55 : 1);
+      }
+    });
+    const mother = createGongfaSigil(
+      this, command.mergeTarget.x, command.mergeTarget.y,
+      command.sourceGongfaId, command.radius, 0.9
+    ).setDepth(12);
+    mother.setScale(0.4);
+    this.tweens.add({ targets: mother, scale: 1.15, alpha: 0, duration: 900, onComplete: () => mother.destroy() });
+    this.tweens.add({ targets: roots, alpha: 0, duration: 820, onComplete: () => roots.destroy() });
+    this.recordGongfaMotif(`${identity.motifId}:root-mother:${command.fate}`);
+  }
+
+  private damageEnemiesAlongRootSegment(
+    from: { x: number; y: number },
+    to: { x: number; y: number },
+    width: number,
+    damage: number,
+    damaged: Set<number>,
+    bossDamageScale: number
+  ): void {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const lengthSq = Math.max(1, dx * dx + dy * dy);
+    for (const enemy of (this.enemies.getChildren() as Enemy[]).filter((candidate) => candidate.active)) {
+      if (damaged.has(enemy.combatTargetId)) continue;
+      const projection = Math.max(0, Math.min(1,
+        ((enemy.x - from.x) * dx + (enemy.y - from.y) * dy) / lengthSq
+      ));
+      const closestX = from.x + dx * projection;
+      const closestY = from.y + dy * projection;
+      if (Phaser.Math.Distance.Between(enemy.x, enemy.y, closestX, closestY) > width + 12) continue;
+      damaged.add(enemy.combatTargetId);
+      const isBoss = enemy.role === "tribulation-boss";
       if (enemy.receiveDamage(damage * (isBoss ? bossDamageScale : 1))) this.resolveEnemyDeath(enemy);
     }
   }

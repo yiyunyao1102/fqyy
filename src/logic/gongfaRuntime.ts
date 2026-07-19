@@ -537,6 +537,36 @@ export type GongfaRuntimeCommand =
       fate: "shared-cold" | "collective-liability" | "compensating-ferry";
       sourceGongfaId: GongfaId;
       masteryCast: MasterySkill2Cast;
+    }
+  | {
+      kind: "authored-root-infection";
+      hosts: Array<{ targetId: number; x: number; y: number }>;
+      sourceGongfaId: GongfaId;
+    }
+  | {
+      kind: "authored-root-stage";
+      targetId: number;
+      x: number;
+      y: number;
+      stage: 1 | 2;
+      damage: number;
+      radius: number;
+      maxSplashTargets: number;
+      slowMultiplier?: number;
+      slowDurationMs?: number;
+      immobilizeOrdinary?: boolean;
+      sourceGongfaId: GongfaId;
+    }
+  | {
+      kind: "authored-root-ancestor";
+      hosts: Array<{ targetId: number; x: number; y: number; rank: AuthoredTargetFact["rank"] }>;
+      routeTargets: Array<{ targetId: number; x: number; y: number; rank: AuthoredTargetFact["rank"] }>;
+      mergeTarget: { x: number; y: number };
+      damage: number;
+      radius: number;
+      fate: "many-mouths" | "one-heart" | "wither-seed";
+      sourceGongfaId: GongfaId;
+      masteryCast: MasterySkill2Cast;
     };
 
 export interface YujianTransformationTriggers {
@@ -2145,6 +2175,64 @@ function advanceAuthoredWorldFacts(
       }
       state.resource = Math.min(1, state.cycleCount / 3);
     }
+
+    if (runtime.gongfaId === "thousand-root-formation") {
+      const dyingLineages = state.anchors.filter((anchor) =>
+        anchor.kind === "infection" && anchor.targetId === event.targetId
+      );
+      const occupied = new Set(state.anchors
+        .filter((anchor) => anchor.kind === "infection" && anchor.targetId !== event.targetId)
+        .map((anchor) => anchor.targetId));
+      for (const lineage of dyingLineages) {
+        const eligible = (event.targets ?? []).filter((target) => !occupied.has(target.targetId));
+        let successor: AuthoredTargetFact | undefined;
+        if (learnedIds.includes("new-sprout-pursues-the-crowd")) {
+          successor = [...eligible].sort((a, b) => {
+            const densityA = eligible.filter((other) => distanceSquared(a.x, a.y, other.x, other.y) <= 115 ** 2).length;
+            const densityB = eligible.filter((other) => distanceSquared(b.x, b.y, other.x, other.y) <= 115 ** 2).length;
+            return densityB - densityA;
+          })[0];
+          lineage.value = 0;
+        } else if (learnedIds.includes("old-root-seizes-a-body")) {
+          successor = eligible
+            .filter((target) => distanceSquared(event.x, event.y, target.x, target.y) <= 150 ** 2)
+            .sort((a, b) => distanceSquared(event.x, event.y, a.x, a.y) - distanceSquared(event.x, event.y, b.x, b.y))[0];
+          lineage.value *= 0.5;
+        } else if (learnedIds.includes("strong-seed-chooses-its-host")) {
+          successor = [...eligible].sort((a, b) =>
+            (b.rank === "elite" || b.rank === "boss" ? 2 : 0) + b.healthRatio -
+            ((a.rank === "elite" || a.rank === "boss" ? 2 : 0) + a.healthRatio)
+          )[0];
+        } else {
+          successor = [...eligible].sort((a, b) =>
+            distanceSquared(event.x, event.y, a.x, a.y) - distanceSquared(event.x, event.y, b.x, b.y)
+          )[0];
+          lineage.value = 0;
+        }
+
+        if (!successor && learnedIds.includes("old-root-seizes-a-body")) {
+          state.anchors = state.anchors.filter((anchor) => anchor !== lineage);
+          continue;
+        }
+        lineage.targetId = successor?.targetId;
+        lineage.x = successor?.x ?? event.x;
+        lineage.y = successor?.y ?? event.y;
+        lineage.infectionStage = lineage.value >= 7000 ? 2 : lineage.value >= 3000 ? 1 : 0;
+        lineage.remainingMs = successor
+          ? undefined
+          : learnedIds.includes("strong-seed-chooses-its-host") ? 4000 : 1600;
+        if (successor) {
+          occupied.add(successor.targetId);
+          commands.push({
+            kind: "authored-root-infection",
+            hosts: [{ targetId: successor.targetId, x: successor.x, y: successor.y }],
+            sourceGongfaId: runtime.gongfaId
+          });
+        }
+      }
+      state.charges = state.anchors.filter((anchor) => anchor.kind === "infection").length;
+      state.resource = state.charges / Math.max(1, state.maxCharges);
+    }
     return;
   }
 
@@ -2359,6 +2447,75 @@ function advanceAuthoredWorldFacts(
     state.charges = origins.filter((origin) => origin.targetId !== undefined).length;
     state.resource = Math.min(1, state.cycleCount / 3);
   }
+
+  if (runtime.gongfaId === "thousand-root-formation") {
+    const targets = event.targets ?? [];
+    const infections = state.anchors.filter((anchor) => anchor.kind === "infection");
+    const occupied = new Set(infections.map((anchor) => anchor.targetId));
+    for (const infection of infections) {
+      if (infection.targetId === undefined) {
+        const candidates = targets.filter((target) => !occupied.has(target.targetId));
+        const successor = [...candidates].sort((a, b) => {
+          if (learnedIds.includes("strong-seed-chooses-its-host")) {
+            return (b.rank === "elite" || b.rank === "boss" ? 2 : 0) + b.healthRatio -
+              ((a.rank === "elite" || a.rank === "boss" ? 2 : 0) + a.healthRatio);
+          }
+          return distanceSquared(infection.x, infection.y, a.x, a.y) -
+            distanceSquared(infection.x, infection.y, b.x, b.y);
+        })[0];
+        if (successor) {
+          infection.targetId = successor.targetId;
+          infection.x = successor.x;
+          infection.y = successor.y;
+          infection.remainingMs = undefined;
+          occupied.add(successor.targetId);
+          commands.push({
+            kind: "authored-root-infection",
+            hosts: [{ targetId: successor.targetId, x: successor.x, y: successor.y }],
+            sourceGongfaId: runtime.gongfaId
+          });
+        }
+        continue;
+      }
+      const host = targets.find((target) => target.targetId === infection.targetId);
+      if (!host) continue;
+      infection.x = host.x;
+      infection.y = host.y;
+      const previousStage = infection.infectionStage ?? 0;
+      infection.value += event.deltaMs;
+      const nextStage = infection.value >= 7000 ? 2 : infection.value >= 3000 ? 1 : 0;
+      for (let stage = previousStage + 1; stage <= nextStage; stage += 1) {
+        if (stage !== 1 && stage !== 2) continue;
+        const heartRoot = learnedIds.includes("heart-piercing-killing-root");
+        const branchRoot = learnedIds.includes("body-borrowing-branch-root");
+        const coilingRoot = learnedIds.includes("bone-locking-coiling-root");
+        commands.push({
+          kind: "authored-root-stage",
+          targetId: host.targetId,
+          x: host.x,
+          y: host.y,
+          stage,
+          damage: Math.max(1, Math.floor(runtime.combat.damage *
+            (heartRoot ? stage === 2 ? 1.65 : 1.15 :
+              branchRoot ? stage === 2 ? 0.55 : 0.18 :
+                coilingRoot ? 0.12 : stage === 2 ? 0.9 : 0.55))),
+          radius: branchRoot && stage === 2 ? 115 : coilingRoot ? 34 : 48,
+          maxSplashTargets: branchRoot && stage === 2 ? 3 : 0,
+          ...(coilingRoot ? {
+            slowMultiplier: stage === 2 ? 0.16 : 0.52,
+            slowDurationMs: stage === 2 ? 2200 : 1400,
+            immobilizeOrdinary: stage === 2
+          } : {}),
+          sourceGongfaId: runtime.gongfaId
+        });
+      }
+      infection.infectionStage = nextStage;
+    }
+    state.charges = infections.length;
+    state.secondaryResource = infections.filter((infection) => infection.infectionStage === 2).length;
+    state.resource = infections.reduce((sum, infection) => sum + Math.min(1, infection.value / 7000), 0) /
+      Math.max(1, state.maxCharges);
+  }
 }
 
 export function advanceGongfaRuntime(
@@ -2521,6 +2678,73 @@ export function advanceGongfaRuntime(
         next.authored.cycleCount = 0;
         next.authored.charges = 0;
         next.authored.resource = 0;
+      }
+      return { runtime: next, commands };
+    }
+    if (event.skill2Id === "myriad-root-killing-field" && next.gongfaId === "thousand-root-formation") {
+      const targets = event.targets ?? [];
+      const infections = next.authored.anchors.filter((anchor) =>
+        anchor.kind === "infection" && anchor.targetId !== undefined
+      );
+      const hosts = infections.flatMap((infection) => {
+        const target = targets.find((candidate) => candidate.targetId === infection.targetId);
+        return target ? [target] : [];
+      });
+      const matureCount = infections.filter((infection) => infection.infectionStage === 2).length;
+      if (hosts.length >= 4 && matureCount >= 2) {
+        const learnedIds = event.learnedMasteryIds;
+        const fate = learnedIds.includes("one-heart-strangles-life")
+          ? "one-heart" as const
+          : learnedIds.includes("wither-and-flourish-leave-a-seed")
+            ? "wither-seed" as const
+            : "many-mouths" as const;
+        const strongestHost = [...hosts].sort((a, b) =>
+          (b.rank === "boss" ? 3 : b.rank === "elite" ? 2 : 1) + b.healthRatio -
+          ((a.rank === "boss" ? 3 : a.rank === "elite" ? 2 : 1) + a.healthRatio)
+        )[0]!;
+        const ordinaryRoutes = targets
+          .filter((target) => target.rank === "ordinary")
+          .sort((a, b) => a.healthRatio - b.healthRatio)
+          .slice(0, hosts.length);
+        const routeTargets = fate === "one-heart"
+          ? [strongestHost]
+          : fate === "many-mouths"
+            ? ordinaryRoutes
+            : [];
+        const mergeTarget = fate === "one-heart"
+          ? { x: strongestHost.x, y: strongestHost.y }
+          : {
+              x: hosts.reduce((sum, host) => sum + host.x, 0) / hosts.length,
+              y: hosts.reduce((sum, host) => sum + host.y, 0) / hosts.length
+            };
+        commands.push({
+          kind: "authored-root-ancestor",
+          hosts,
+          routeTargets,
+          mergeTarget,
+          damage: Math.max(1, Math.floor(skill2Base.damage * skill2Stats.damageScale *
+            (fate === "one-heart" ? 1.65 : fate === "wither-seed" ? 0.48 : 0.9))),
+          radius: 82 + skill2Stats.coverage * 8,
+          fate,
+          sourceGongfaId: next.gongfaId,
+          masteryCast: {
+            skill2Id: "myriad-root-killing-field",
+            cooldownMs: Math.floor(authoredSkill2Plans["myriad-root-killing-field"].cooldownMs * skill2Stats.cadenceScale)
+          }
+        });
+        next.authored.anchors = next.authored.anchors.filter((anchor) => anchor.kind !== "infection");
+        if (fate === "wither-seed") {
+          const survivor = [...targets].sort((a, b) => b.healthRatio - a.healthRatio)[0];
+          if (survivor) {
+            next.authored.anchors.push({
+              kind: "infection", targetId: survivor.targetId, x: survivor.x, y: survivor.y,
+              value: 7000, infectionStage: 2
+            });
+          }
+        }
+        next.authored.charges = next.authored.anchors.filter((anchor) => anchor.kind === "infection").length;
+        next.authored.secondaryResource = fate === "wither-seed" && next.authored.charges > 0 ? 1 : 0;
+        next.authored.resource = fate === "wither-seed" && next.authored.charges > 0 ? 0.2 : 0;
       }
       return { runtime: next, commands };
     }
@@ -3439,6 +3663,34 @@ export function planGongfaAttack(
       kind: "authored-cold-debt-placement",
       seals: placed,
       lifetimeMs: runtime.combat.projectileLifetimeMs * 2.2,
+      sourceGongfaId: runtime.gongfaId
+    }];
+  }
+  if (runtime.gongfaId === "thousand-root-formation") {
+    const lineages = runtime.authored.anchors.filter((anchor) => anchor.kind === "infection");
+    if (lineages.length >= runtime.authored.maxCharges) return [];
+    const infectedIds = new Set(lineages.map((anchor) => anchor.targetId));
+    const playerX = options.playerX ?? 0;
+    const playerY = options.playerY ?? 0;
+    const host = (options.targets ?? [])
+      .filter((target) => !infectedIds.has(target.targetId))
+      .sort((a, b) =>
+        distanceSquared(a.x, a.y, playerX, playerY) - distanceSquared(b.x, b.y, playerX, playerY)
+      )[0];
+    if (!host) return [];
+    runtime.authored.anchors.push({
+      kind: "infection",
+      targetId: host.targetId,
+      x: host.x,
+      y: host.y,
+      value: 0,
+      infectionStage: 0
+    });
+    runtime.authored.charges = lineages.length + 1;
+    runtime.authored.resource = runtime.authored.charges / runtime.authored.maxCharges;
+    return [{
+      kind: "authored-root-infection",
+      hosts: [{ targetId: host.targetId, x: host.x, y: host.y }],
       sourceGongfaId: runtime.gongfaId
     }];
   }

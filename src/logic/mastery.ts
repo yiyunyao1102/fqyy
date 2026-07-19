@@ -198,7 +198,8 @@ const approvedRuntimeTransformationGongfaIds = new Set<GongfaId>([
   "mist-wraith-canon",
   "sword-burial-formation",
   "flame-demon-body-art",
-  "frozen-river-formation"
+  "frozen-river-formation",
+  "thousand-root-formation"
 ]);
 
 const approvedRuntimeTransformationSeeds: Partial<Record<
@@ -271,6 +272,23 @@ const approvedRuntimeTransformationSeeds: Partial<Record<
       ["all-guilty-share-the-cold", "All Guilty Share the Cold", "The prison hard-freezes ordinary enemies and strongly slows bosses.", "Prison damage is very low.", "Frozen River Prison shared fate"],
       ["collective-liability", "Collective Liability", "Divides one large fixed damage pool across every debtor.", "Freeze is weak and adding debtors lowers damage per target.", "Frozen River Prison shared fate"],
       ["compensating-ferry", "Compensating Ferry", "Debtor death can keep transferring Debt and extending the prison.", "There is no group freeze and single-boss value is weak.", "Frozen River Prison transfer continuity"]
+    ]
+  },
+  "thousand-root-formation": {
+    3: [
+      ["heart-piercing-killing-root", "Heart-Piercing Killing Root", "Every growth stage heavily damages its living host.", "Hosts often die early, resetting maturity and losing capstone readiness.", "Host-stage damage and lineage survival"],
+      ["body-borrowing-branch-root", "Body-Borrowing Branch Root", "A mature root strikes three distinct nearby enemies once.", "Damage dealt directly to the host is low.", "Mature infection branching"],
+      ["bone-locking-coiling-root", "Bone-Locking Coiling Root", "Growth stages apply escalating slow and mature roots immobilize ordinary hosts.", "Direct and splash damage are very low; bosses are slowed rather than immobilized.", "Host control at growth transitions"]
+    ],
+    6: [
+      ["new-sprout-pursues-the-crowd", "New Sprout Pursues the Crowd", "A released seed jumps far toward the densest available group.", "Every succession fully resets its age.", "Death succession range and host density"],
+      ["old-root-seizes-a-body", "Old Root Seizes a Body", "A nearby successor inherits half the dead root's age.", "The lineage dies when no host is available within short range.", "Short-range age inheritance"],
+      ["strong-seed-chooses-its-host", "Strong Seed Chooses Its Host", "The seed retains full age while seeking a high-health or elite host.", "It waits at the corpse and withers after four seconds.", "Full-age selective succession"]
+    ],
+    9: [
+      ["many-mouths-devour-life", "Many Mouths Devour Life", "Each erupting root routes through a different ordinary enemy before merging.", "Boss convergence is slow and weak.", "Root-Mother crowd route"],
+      ["one-heart-strangles-life", "One Heart Strangles Life", "Every root converges through the strongest infected host for great focused damage.", "It provides almost no crowd clear.", "Root-Mother convergence target"],
+      ["wither-and-flourish-leave-a-seed", "Wither and Flourish Leave a Seed", "After merging, one mature seed remains in the healthiest survivor.", "The Root-Mother payoff is sharply reduced.", "Post-capstone lineage preservation"]
     ]
   }
 };

@@ -464,11 +464,11 @@ export const gongfaConfigs: Record<GongfaId, GongfaConfig> = {
   },
   "thousand-root-formation": {
     id: "thousand-root-formation",
-    name: "Thousand-Root Formation",
+    name: "Myriad-Root Lifebinding Canon",
     requiredRoots: ["wood"],
     pattern: "trap",
-    title: "Thousand-Root Formation",
-    lore: "Plant patient root seals that awaken beneath enemies and grow into a living kill-field.",
+    title: "Myriad-Root Lifebinding Canon",
+    lore: "Implant one finite root lineage in each living host; let survival, succession, and death decide its maturity.",
     projectileTexture: "aura-blade",
     tint: 0x82c96b,
     stages: {

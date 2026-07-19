@@ -139,11 +139,11 @@ export const gongfaPackageCatalog: Record<GongfaId, GongfaPackageDefinition> = {
     skill2: { id: "star-breaking-descent", name: "Star-Breaking Descent", description: "Crashes down in a massive close-range strike and briefly returns incoming force as a violent shockwave.", tags: ["melee", "metal", "defensive", "reflect"] }
   },
   "thousand-root-formation": {
-    combatRole: "Trapper-controller that plants persistent kill zones and lets summoned roots punish pursuit routes.",
-    visualMotif: "Jade formation nodes, branching root script, and pulsing earthen circles.",
-    skill1: { id: "root-seal-array", name: "Root-Seal Array", description: "Plants several root seals beneath likely enemy routes; each persists and pulses repeatedly when the formation awakens.", tags: ["trap", "wood", "summon"] },
-    passive: { name: "Patient Germination", resource: "Growth", description: "Each distinct enemy caught by a seal grows the formation, adding roots and extending future trap fields." },
-    skill2: { id: "myriad-root-killing-field", name: "Myriad-Root Killing Field", description: "Overgrows the battlefield with a wide network of persistent root traps that pulse in a linked sequence.", tags: ["trap", "wood", "summon"] }
+    combatRole: "A living-host controller that preserves finite parasitic lineages long enough to mature and erupt.",
+    visualMotif: "Internal jade seeds, roots bursting from living bodies, and one crawling Root Mother.",
+    skill1: { id: "root-seal-array", name: "Life-Hosted Root Seed", description: "Implants one eligible living enemy with a finite root lineage that ages only while its host survives.", tags: ["ailment", "wood", "summon"] },
+    passive: { name: "One-for-One Succession", resource: "Living Lineages", description: "A dead host releases exactly one seed toward another living host; rapid death preserves count but resets maturity." },
+    skill2: { id: "myriad-root-killing-field", name: "Myriad Roots Share One Ancestor", description: "Erupts at least four infections, crawls across their host-defined routes, then merges them once into a Root Mother.", tags: ["ailment", "wood", "summon"] }
   },
   "flame-demon-body-art": {
     combatRole: "An aggressive close-range brawler that turns repeated contact into a crushing fiery finisher.", visualMotif: "Blood-red furnace fists, horned flame arcs, and scorched impact rings.",
