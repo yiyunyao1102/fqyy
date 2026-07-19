@@ -44,7 +44,7 @@ implementation, testing, balance review, and future regression checks.
 | Vermilion Bird Covenant / 朱雀灵契 | Yuling | Approved | Pending redesign |
 | Black Tide Scripture / 玄潮经 | Yuling | Approved | Pending redesign |
 | Heavenfall Body Art / 天坠锻体术 | Yuling | Approved | Implemented and verified |
-| Myriad Beast Grove / 万兽灵林 | Yuling | Approved | Pending redesign |
+| Myriad Beast Grove / 万兽灵林 | Yuling | Approved | Implemented and verified |
 | Ancient Tree Body Art / 古木锻体术 | Yuling | Approved | Pending redesign |
 | Flame-Demon Body Art / 炎魔锻体术 | Youxuan | Approved | Pending redesign |
 | Mist Wraith Canon / 雾灵真典 | Youxuan | Approved | Pending redesign |
@@ -845,6 +845,35 @@ adds permanent summons.
 
 **Must not become:** Vermilion Bird's single central companion, Mist Wraith's corpse
 army, identical summon multiplication, manual pet targeting, or a generic hit meter.
+
+### Implemented tuning contract
+
+- Exactly three persistent beast records exist: Boar, Fox, and Deer. Each owns its
+  position, target, health, downed state, and visible rebirth timer. Nearby danger can
+  down each beast independently; the pack never grows by generic summon count.
+- While the player moves, Boar selects density, Fox selects isolated or weakened prey,
+  and Deer holds near the player and roots approaching threats. Standing still recalls
+  all three without emitting an attack; Evade reforms them for `620ms` and also deals
+  no damage.
+- Species marks are bit-unique per target. One species cannot increase its own mark.
+  A two-species death grants `18%` base Kinship and a living three-species death grants
+  `34%` plus a `30%` pack heal. Solo kills, split marks, and downed partners do not
+  counterfeit complete cooperation.
+- Mountain Lord uses a large striped feline body and refuses ordinary targets. Black
+  Tortoise uses a shell silhouette, abandons Boar crowd breaking, and intercepts `30%`
+  of nearby incoming damage through its own health. White Ape uses a broad armed body
+  and an expanding call, spreading its species mark over an area while surrendering
+  Deer's root and `14%` close protection.
+- Two-Beast Aid normalizes a lower `70%` Kinship budget and calls at most two ancestors.
+  Three-Spirit Hunt grants `68%` only for a full living pack. Rotating Hunt stores the
+  previous species combination and grants nothing when that combination repeats.
+- Full Kinship calls exactly one ancestor action per living species. Wild Run uses a
+  broad Boar charge, diagonal Fox hunt, and rooted Deer domain while allowing only one
+  boss hit across the crowd-clear pass. Encirclement concentrates all distinct actions
+  on the strongest threat. Return to the Grove deals sharply reduced damage, revives
+  every beast, and grants `4.2s` of `45%` ancestral protection.
+- Persistent beasts, replacement forms, species marks, action routes, and the three R9
+  ancestor laws all use different geometry rather than recolored copies.
 
 ---
 

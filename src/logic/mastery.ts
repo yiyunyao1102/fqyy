@@ -375,7 +375,7 @@ const approvedRuntimeTransformationSeeds: Partial<Record<
     3: [
       ["mountain-lord-enters-the-grove", "Mountain Lord Enters the Grove", "The Fox becomes a Mountain Lord that hunts elite and boss prey with heavy strikes.", "It neglects weak ordinary mobs.", "Fox species job and target priority"],
       ["black-tortoise-guards-the-grove", "Black Tortoise Guards the Grove", "The Boar becomes a durable Black Tortoise interceptor.", "It loses active crowd breaking and deals low damage.", "Boar species job and defensive envelope"],
-      ["white-ape-calls-the-pack", "White Ape Calls the Pack", "The Deer becomes a White Ape whose call spreads the other species marks.", "The pack loses player defense and rooting.", "Deer species job and mark coordination"]
+      ["white-ape-calls-the-pack", "White Ape Calls the Pack", "The Deer becomes a White Ape whose broad call spreads its species mark.", "The pack loses player defense and rooting.", "Deer species job and mark coordination"]
     ],
     6: [
       ["two-beasts-aid-each-other", "Two Beasts Aid Each Other", "Any two distinct marks grant reliable Kinship.", "Kinship and ancestor readiness are capped lower.", "Cooperation threshold and Kinship cap"],

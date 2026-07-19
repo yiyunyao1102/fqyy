@@ -3569,9 +3569,17 @@ function advanceAuthoredWorldFacts(
     const living = pack.filter((beast) => beast.beastState === "living");
     let cooldown = Math.max(0, (state.targetLedger[-40] ?? 0) - event.deltaMs);
     if (cooldown <= 0 && targets.length > 0) {
+      let acted = false;
       for (const beast of living) {
         const species = beast.beastSpecies ?? "boar";
         const form = beast.beastForm ?? forms[species];
+        if (!event.isMoving) {
+          const angle = species === "boar" ? 2.5 : species === "fox" ? 0.65 : -Math.PI / 2;
+          beast.x = playerX + Math.cos(angle) * 48;
+          beast.y = playerY + Math.sin(angle) * 48;
+          beast.targetId = undefined;
+          continue;
+        }
         const candidates = form === "mountain-lord"
           ? targets.filter((target) => target.rank === "elite" || target.rank === "boss")
           : targets;
@@ -3599,12 +3607,7 @@ function advanceAuthoredWorldFacts(
         })[0];
         if (!target) continue;
         const from = { x: beast.x, y: beast.y };
-        const recalled = !event.isMoving;
-        if (recalled) {
-          const angle = species === "boar" ? 2.5 : species === "fox" ? 0.65 : -Math.PI / 2;
-          beast.x = playerX + Math.cos(angle) * 48;
-          beast.y = playerY + Math.sin(angle) * 48;
-        } else if (species === "deer") {
+        if (species === "deer") {
           beast.x = playerX;
           beast.y = playerY - 48;
         } else {
@@ -3626,8 +3629,9 @@ function advanceAuthoredWorldFacts(
           rootMs: species === "deer" && form !== "white-ape" ? 720 : 0,
           sourceGongfaId: runtime.gongfaId
         });
+        acted = true;
       }
-      cooldown = Math.max(720, 1260 - runtime.combat.count * 55);
+      if (acted) cooldown = Math.max(720, 1260 - runtime.combat.count * 55);
     }
     state.targetLedger[-40] = cooldown;
     state.charges = living.length;
@@ -5153,6 +5157,30 @@ export function advanceGongfaRuntime(
           sourceGongfaId: next.gongfaId
         });
         commands.push({ kind: "incoming-damage", finalDamage: 0 });
+        return { runtime: next, commands };
+      }
+    }
+
+    if (next.gongfaId === "myriad-beast-grove") {
+      const living = next.authored.anchors.filter((anchor) => anchor.kind === "beast" && anchor.beastState === "living");
+      const tortoise = living.find((beast) => beast.beastForm === "black-tortoise");
+      const deer = living.find((beast) => beast.beastSpecies === "deer" && beast.beastForm !== "white-ape");
+      const ancestralGuard = (next.authored.targetLedger[-45] ?? 0) > 0;
+      const closeThreat = event.sourceDistance === undefined || event.sourceDistance <= 180;
+      const protector = closeThreat ? tortoise ?? deer : undefined;
+      const mitigation = ancestralGuard ? 0.45 : tortoise && protector ? 0.3 : deer && protector ? 0.14 : 0;
+      if (mitigation > 0) {
+        const finalDamage = Math.max(1, Math.floor(event.amount * (1 - mitigation)));
+        if (protector && !ancestralGuard) {
+          const prevented = Math.max(0, event.amount - finalDamage);
+          protector.value = Math.max(0, protector.value - prevented * (tortoise ? 0.006 : 0.01));
+          if (protector.value === 0) {
+            protector.beastState = "downed";
+            protector.rebirthMs = 6000;
+            protector.targetId = undefined;
+          }
+        }
+        commands.push({ kind: "incoming-damage", finalDamage });
         return { runtime: next, commands };
       }
     }

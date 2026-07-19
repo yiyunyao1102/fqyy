@@ -460,7 +460,7 @@ test("all twelve archetype Gongfa execute their authored attacks and cast motifs
       window.__gameTest!.forceEquipGongfa(id);
       window.__gameTest!.forceSpawnEnemies(10);
     }, gongfaId);
-    if (gongfaId === "heavenfall-body-art" || gongfaId === "vermilion-bird-covenant") {
+    if (["heavenfall-body-art", "vermilion-bird-covenant", "myriad-beast-grove"].includes(gongfaId)) {
       await page.keyboard.down("d");
     }
     await expect.poll(

@@ -183,7 +183,7 @@ export const gongfaPackageCatalog: Record<GongfaId, GongfaPackageDefinition> = {
   },
   "myriad-beast-grove": {
     combatRole: "A fixed mixed pack whose Boar, Fox, and Deer must survive and meaningfully assist the same kills.", visualMotif: "Three distinct jade beast bodies, species marks, formation routes, and giant one-action ancestors.",
-    skill1: { id: "seed-spirit-pack", name: "Three-Beast Pack", description: "Maintains exactly one Boar, Fox, and Deer with independent health, position, target logic, and seed rebirth.", tags: ["summon", "wood", "defensive"] },
+    skill1: { id: "seed-spirit-pack", name: "Three-Beast Pack", description: "Moving sends one Boar, Fox, and Deer to perform different jobs; standing or Evading recalls the independently living pack without attacking.", tags: ["summon", "wood", "defensive"] },
     passive: { name: "Wildwood Kinship", resource: "Kinship", description: "Kills assisted by different living species build Kinship; three-species kills heal the pack." },
     skill2: { id: "myriad-beast-stampede", name: "Ancestral Menagerie", description: "At full Kinship, each currently living species calls one giant ancestor action, then vanishes.", tags: ["summon", "wood", "explosive"] }
   },

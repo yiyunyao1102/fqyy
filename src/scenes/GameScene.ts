@@ -400,7 +400,7 @@ export class GameScene extends Phaser.Scene {
         .filter((anchor) => anchor.kind === "beast")
         .map((anchor) => {
           const species = anchor.beastSpecies === "boar" ? "Boar" : anchor.beastSpecies === "fox" ? "Fox" : "Deer";
-          return `${species} ${anchor.beastState === "downed" ? "Rebirthing" : `${Math.floor(anchor.value * 100)}%`}`;
+          return `${species} ${anchor.beastState === "downed" ? `Rebirthing ${Math.ceil((anchor.rebirthMs ?? 0) / 100) / 10}s` : `${Math.floor(anchor.value * 100)}%`}`;
         });
       return `Pack: ${labels.join(" · ")} · Kinship ${Math.floor(runtime.authored.resource * 100)}%`;
     }
@@ -3403,21 +3403,44 @@ export class GameScene extends Phaser.Scene {
       marker.clear();
       const downed = beast.beastState === "downed";
       marker.setAlpha(downed ? 0.34 : 1);
-      if (species === "boar") {
+      if (beast.beastForm === "black-tortoise") {
+        marker.fillStyle(0x335f57, 0.96);
+        marker.fillEllipse(0, 2, 48, 32);
+        marker.lineStyle(4, identity.secondary, 0.92);
+        marker.strokeEllipse(0, 2, 48, 32);
+        marker.lineBetween(-16, -7, 16, 11);
+        marker.lineBetween(16, -7, -16, 11);
+        marker.fillStyle(0x75d6a0, 0.9);
+        marker.fillCircle(27, 2, 7);
+      } else if (beast.beastForm === "mountain-lord") {
+        marker.fillStyle(0xe0b85c, 0.96);
+        marker.fillEllipse(0, 2, 46, 25);
+        marker.fillCircle(20, -5, 11);
+        marker.fillTriangle(14, -13, 16, -25, 22, -14);
+        marker.fillTriangle(24, -14, 30, -24, 29, -10);
+        marker.lineStyle(5, 0x6d3d21, 0.92);
+        marker.lineBetween(-13, -8, -8, 11);
+        marker.lineBetween(0, -10, 4, 12);
+        marker.lineBetween(12, -9, 15, 8);
+      } else if (beast.beastForm === "white-ape") {
+        marker.fillStyle(0xd8e2ce, 0.96);
+        marker.fillCircle(0, -7, 13);
+        marker.fillEllipse(0, 10, 25, 30);
+        marker.lineStyle(8, identity.accent, 0.92);
+        marker.lineBetween(-8, 2, -25, 17);
+        marker.lineBetween(8, 2, 25, 17);
+        marker.lineStyle(3, identity.secondary, 0.9);
+        marker.strokeCircle(0, 3, 27);
+      } else if (species === "boar") {
         marker.fillStyle(identity.accent, 0.94);
         marker.fillRoundedRect(-18, -10, 36, 23, 8);
         marker.fillTriangle(13, -8, 25, -15, 18, 1);
         marker.fillTriangle(-13, -8, -25, -15, -18, 1);
-        if (beast.beastForm === "black-tortoise") {
-          marker.lineStyle(4, identity.secondary, 0.9);
-          marker.strokeEllipse(0, 0, 47, 32);
-        }
       } else if (species === "fox") {
         marker.fillStyle(identity.secondary, 0.95);
         marker.fillTriangle(-17, 13, 0, -17, 17, 13);
         marker.fillTriangle(-13, -9, -5, -23, -1, -7);
         marker.fillTriangle(13, -9, 5, -23, 1, -7);
-        if (beast.beastForm === "mountain-lord") marker.lineStyle(5, 0xe0b85c, 0.9).strokeCircle(0, 0, 25);
       } else {
         marker.lineStyle(5, identity.secondary, 0.95);
         marker.lineBetween(0, 13, 0, -12);
@@ -3425,16 +3448,19 @@ export class GameScene extends Phaser.Scene {
         marker.lineBetween(0, -9, 15, -23);
         marker.lineBetween(-15, -23, -21, -14);
         marker.lineBetween(15, -23, 21, -14);
-        if (beast.beastForm === "white-ape") {
-          marker.fillStyle(identity.accent, 0.92);
-          marker.fillCircle(0, 0, 14);
-        }
       }
       const healthRatio = Math.max(0, Math.min(1, beast.value / Math.max(0.01, beast.maxValue ?? 1)));
       marker.fillStyle(0x172217, 0.82);
       marker.fillRect(-20, 27, 40, 4);
       marker.fillStyle(identity.accent, 0.96);
       marker.fillRect(-20, 27, 40 * healthRatio, 4);
+      if (downed) {
+        const rebirthRatio = 1 - Math.max(0, Math.min(1, (beast.rebirthMs ?? 0) / 6000));
+        marker.lineStyle(4, identity.secondary, 0.9);
+        marker.beginPath();
+        marker.arc(0, 0, 31, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * rebirthRatio);
+        marker.strokePath();
+      }
       marker.setPosition(beast.x, beast.y);
     }
     for (const [species, marker] of this.myriadBeastMarkers) {
@@ -3534,10 +3560,40 @@ export class GameScene extends Phaser.Scene {
     const identity = getGongfaVisualIdentity(command.sourceGongfaId);
     const route = this.applyGongfaEffectVisualHierarchy(this.add.graphics(), command.sourceGongfaId).setDepth(13);
     const color = command.species === "boar" ? 0x7f9f55 : command.species === "fox" ? 0xe3bd62 : 0x75d6a0;
-    route.lineStyle(command.species === "boar" ? 8 : 4, color, 0.82);
-    route.lineBetween(command.from.x, command.from.y, command.target.x, command.target.y);
-    route.fillStyle(color, 0.25);
-    route.fillCircle(command.target.x, command.target.y, command.radius);
+    if (command.form === "black-tortoise") {
+      route.fillStyle(color, 0.22);
+      route.fillEllipse(command.target.x, command.target.y, command.radius * 2.2, command.radius * 1.5);
+      route.lineStyle(6, identity.secondary, 0.9);
+      route.strokeEllipse(command.target.x, command.target.y, command.radius * 2.2, command.radius * 1.5);
+    } else if (command.form === "white-ape") {
+      route.lineStyle(5, color, 0.88);
+      route.strokeCircle(command.target.x, command.target.y, command.radius * 0.55);
+      route.strokeCircle(command.target.x, command.target.y, command.radius);
+    } else if (command.form === "mountain-lord") {
+      const angle = Phaser.Math.Angle.Between(command.from.x, command.from.y, command.target.x, command.target.y);
+      route.lineStyle(5, color, 0.9);
+      for (const offset of [-10, 0, 10]) {
+        const sideX = -Math.sin(angle) * offset; const sideY = Math.cos(angle) * offset;
+        route.lineBetween(command.from.x + sideX, command.from.y + sideY, command.target.x + sideX, command.target.y + sideY);
+      }
+    } else if (command.species === "boar") {
+      route.lineStyle(11, color, 0.84);
+      route.lineBetween(command.from.x, command.from.y, command.target.x, command.target.y);
+      route.fillStyle(color, 0.3);
+      route.fillTriangle(command.target.x + command.radius, command.target.y, command.target.x - 12, command.target.y - 24, command.target.x - 12, command.target.y + 24);
+    } else if (command.species === "fox") {
+      const midX = (command.from.x + command.target.x) / 2;
+      const midY = (command.from.y + command.target.y) / 2 - 34;
+      route.lineStyle(4, color, 0.9);
+      route.lineBetween(command.from.x, command.from.y, midX, midY);
+      route.lineBetween(midX, midY, command.target.x, command.target.y);
+    } else {
+      route.lineStyle(4, color, 0.88);
+      for (let spoke = 0; spoke < 6; spoke += 1) {
+        const angle = spoke / 6 * Math.PI * 2;
+        route.lineBetween(command.target.x, command.target.y, command.target.x + Math.cos(angle) * command.radius, command.target.y + Math.sin(angle) * command.radius);
+      }
+    }
     const victims = (this.enemies.getChildren() as Enemy[]).filter((enemy) =>
       enemy.active && Phaser.Math.Distance.Between(enemy.x, enemy.y, command.target.x, command.target.y) <= command.radius + 12
     );
@@ -3557,24 +3613,70 @@ export class GameScene extends Phaser.Scene {
     const visual = this.applyGongfaEffectVisualHierarchy(this.add.graphics(), command.sourceGongfaId).setDepth(16);
     const enemies = (this.enemies.getChildren() as Enemy[]).filter((enemy) => enemy.active);
     const strongest = [...enemies].sort((a, b) => b.maxHealth - a.maxHealth)[0];
+    const wildBossHits = new Set<number>();
+    const damageEnemy = (enemy: Enemy, scale = 1): void => {
+      if (command.fate === "wild-run" && enemy.role === "tribulation-boss") {
+        if (wildBossHits.has(enemy.combatTargetId)) return;
+        wildBossHits.add(enemy.combatTargetId);
+      }
+      if (enemy.receiveDamage(command.damage * scale)) this.resolveEnemyDeath(enemy);
+    };
+    const nearLine = (enemy: Enemy, fromX: number, fromY: number, toX: number, toY: number, width: number): boolean => {
+      const dx = toX - fromX; const dy = toY - fromY; const lengthSq = Math.max(1, dx * dx + dy * dy);
+      const projection = Math.max(0, Math.min(1, ((enemy.x - fromX) * dx + (enemy.y - fromY) * dy) / lengthSq));
+      return Phaser.Math.Distance.Between(enemy.x, enemy.y, fromX + dx * projection, fromY + dy * projection) <= width;
+    };
     command.species.forEach((species, index) => {
       const angle = (index / Math.max(1, command.species.length)) * Math.PI * 2;
       const color = species === "boar" ? 0x7f9f55 : species === "fox" ? 0xe3bd62 : 0x75d6a0;
-      visual.lineStyle(12, color, 0.72);
       if (command.fate === "encirclement" && strongest) {
         const fromX = strongest.x + Math.cos(angle) * 230;
         const fromY = strongest.y + Math.sin(angle) * 230;
+        visual.lineStyle(species === "boar" ? 16 : species === "fox" ? 7 : 10, color, 0.78);
         visual.lineBetween(fromX, fromY, strongest.x, strongest.y);
-        if (strongest.active && strongest.receiveDamage(command.damage)) this.resolveEnemyDeath(strongest);
+        if (strongest.active) damageEnemy(strongest);
+      } else if (species === "boar") {
+        const y = command.fate === "return-grove" ? this.player.y + 52 : this.player.y - 80;
+        const fromX = command.fate === "return-grove" ? this.player.x - 390 : this.player.x - 420;
+        const toX = command.fate === "return-grove" ? this.player.x : this.player.x + 420;
+        visual.lineStyle(18, color, 0.72);
+        visual.lineBetween(fromX, y, toX, y);
+        visual.fillStyle(color, 0.25);
+        visual.fillTriangle(toX, y, toX - 44, y - 30, toX - 44, y + 30);
+        for (const enemy of enemies.filter((candidate) => candidate.active && nearLine(candidate, fromX, y, toX, y, 58))) {
+          damageEnemy(enemy);
+        }
+      } else if (species === "fox") {
+        const fromX = this.player.x - 380;
+        const fromY = this.player.y + (command.fate === "return-grove" ? -210 : 190);
+        const toX = command.fate === "return-grove" ? this.player.x : this.player.x + 380;
+        const toY = command.fate === "return-grove" ? this.player.y : this.player.y - 190;
+        visual.lineStyle(7, color, 0.82);
+        visual.lineBetween(fromX, fromY, toX, toY);
+        visual.lineStyle(3, identity.secondary, 0.72);
+        visual.lineBetween(fromX + 22, fromY, toX + 22, toY);
+        for (const enemy of enemies.filter((candidate) => candidate.active && nearLine(candidate, fromX, fromY, toX, toY, 30))) {
+          damageEnemy(enemy, 1.12);
+        }
       } else {
-        const y = this.player.y + (index - 1) * 74;
-        visual.lineBetween(this.player.x - 380, y, this.player.x + 380, y);
-        for (const enemy of enemies.filter((candidate) => candidate.active && Math.abs(candidate.y - y) <= 44)) {
-          if (enemy.receiveDamage(command.damage)) this.resolveEnemyDeath(enemy);
+        const centerX = this.player.x;
+        const centerY = command.fate === "return-grove" ? this.player.y : this.player.y + 95;
+        const radius = command.fate === "return-grove" ? 125 : 205;
+        visual.lineStyle(9, color, 0.76);
+        visual.strokeCircle(centerX, centerY, radius);
+        for (let spoke = 0; spoke < 8; spoke += 1) {
+          const spokeAngle = spoke / 8 * Math.PI * 2;
+          visual.lineBetween(centerX, centerY, centerX + Math.cos(spokeAngle) * radius, centerY + Math.sin(spokeAngle) * radius);
+        }
+        for (const enemy of enemies.filter((candidate) => candidate.active && Phaser.Math.Distance.Between(candidate.x, candidate.y, centerX, centerY) <= radius)) {
+          enemy.applySlow(0.18, 1200);
+          damageEnemy(enemy, 0.72);
         }
       }
       visual.fillStyle(color, 0.9);
-      visual.fillCircle(this.player.x + Math.cos(angle) * 52, this.player.y + Math.sin(angle) * 52, 17 + index * 2);
+      if (species === "boar") visual.fillRoundedRect(this.player.x + Math.cos(angle) * 52 - 20, this.player.y + Math.sin(angle) * 52 - 12, 40, 24, 8);
+      else if (species === "fox") visual.fillTriangle(this.player.x + Math.cos(angle) * 52 - 18, this.player.y + Math.sin(angle) * 52 + 14, this.player.x + Math.cos(angle) * 52, this.player.y + Math.sin(angle) * 52 - 20, this.player.x + Math.cos(angle) * 52 + 18, this.player.y + Math.sin(angle) * 52 + 14);
+      else visual.strokeCircle(this.player.x + Math.cos(angle) * 52, this.player.y + Math.sin(angle) * 52, 21);
     });
     if (command.fate === "return-grove") {
       visual.lineStyle(7, identity.secondary, 0.9);

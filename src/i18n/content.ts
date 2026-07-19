@@ -186,7 +186,7 @@ const zhGongfa: Record<GongfaId, GongfaTranslation> = {
   },
   "myriad-beast-grove": {
     name: "万兽灵林", lore: "一豕、一狐、一鹿，各司其猎，同契一林。", combatRole: "维持固定三兽猎群，让独立存活、各司其职的灵兽共同助攻同一场击杀。", visualMotif: "岩豕、灵狐、青鹿三种清晰兽影，物种印记、猎阵路线与一次显化的巨祖灵。",
-    skill1: { name: "三兽猎群", description: "固定维持岩豕、灵狐、青鹿各一只；它们拥有独立生命、位置、索敌职责与种子重生。" }, passive: { name: "荒林同契", resource: "亲缘", description: "不同存活物种共同助攻一次击杀才增长亲缘；三兽齐印还会治疗猎群。" }, skill2: { name: "万兽祖庭", description: "亲缘圆满时，当前每个存活物种各唤出一尊巨型祖灵完成一次本命行动，随后消散。" }
+    skill1: { name: "三兽猎群", description: "移动时派出岩豕、灵狐、青鹿执行不同狩猎职责；停步或闪避只会召回这支独立存活的猎群，不会发动攻击。" }, passive: { name: "荒林同契", resource: "亲缘", description: "不同存活物种共同助攻一次击杀才增长亲缘；三兽齐印还会治疗猎群。" }, skill2: { name: "万兽祖庭", description: "亲缘圆满时，当前每个存活物种各唤出一尊巨型祖灵完成一次不同的本命行动，随后消散。" }
   },
   "ancient-tree-body-art": {
     name: "古木锻体术", lore: "止步生根，以岁月为轮，身化参天古木。", combatRole: "临敌静止后扎根，以扎根时间生长年轮，并用根域、枝区、树冠三层自动攻势取代普通连击。", visualMotif: "可数年轮、依序占据的枝区、外层树冠与唯一不动的世界树主干。",

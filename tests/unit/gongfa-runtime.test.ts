@@ -2719,6 +2719,54 @@ describe("Gongfa runtime", () => {
     expect(actions.find((command) => command.species === "fox")?.target.rank).toBe("elite");
   });
 
+  it("recalls the Myriad Beast formation without attacking while the player stands still", () => {
+    const runtime = createGongfaRuntime({ gongfaId: "myriad-beast-grove" });
+    const result = advanceGongfaRuntime(runtime, {
+      kind: "tick", deltaMs: 1300, nearbyEnemyCount: 2, playerX: 90, playerY: 40,
+      isMoving: false,
+      targets: [{ targetId: 3, x: 150, y: 40, healthRatio: 1, rank: "ordinary" }]
+    });
+    expect(result.commands.filter((command) => command.kind === "authored-beast-action")).toEqual([]);
+    expect(result.runtime.authored.anchors.every((beast) => beast.targetId === undefined)).toBe(true);
+  });
+
+  it("makes Deer and Black Tortoise protection real while White Ape gives that defense up", () => {
+    const incoming = (form: "verdant-deer" | "black-tortoise" | "white-ape") => {
+      const runtime = createGongfaRuntime({ gongfaId: "myriad-beast-grove" });
+      const protector = runtime.authored.anchors.find((beast) =>
+        form === "black-tortoise" ? beast.beastSpecies === "boar" : beast.beastSpecies === "deer"
+      )!;
+      protector.beastForm = form;
+      const result = advanceGongfaRuntime(runtime, {
+        kind: "incoming-damage", amount: 100, sourceDistance: 80
+      });
+      return result.commands.find((command) => command.kind === "incoming-damage")?.finalDamage;
+    };
+    expect(incoming("verdant-deer")).toBe(86);
+    expect(incoming("black-tortoise")).toBe(70);
+    expect(incoming("white-ape")).toBe(100);
+  });
+
+  it("enforces the three distinct Myriad Beast cooperation laws", () => {
+    const resolveMarkedKill = (runtime: GongfaRuntime, targetId: number, species: Array<"boar" | "fox" | "deer">, learnedMasteryIds: string[]) => {
+      for (const mark of species) runtime = advanceGongfaRuntime(runtime, {
+        kind: "authored-beast-assist", targetId, species: mark, learnedMasteryIds
+      }).runtime;
+      return advanceGongfaRuntime(runtime, {
+        kind: "enemy-death", targetId, x: 0, y: 0, rank: "ordinary",
+        velocityX: 0, velocityY: 0, playerX: 0, playerY: 0, learnedMasteryIds
+      }).runtime;
+    };
+    const two = resolveMarkedKill(createGongfaRuntime({ gongfaId: "myriad-beast-grove" }), 81, ["boar", "fox"], ["two-beasts-aid-each-other"]);
+    expect(two.authored.resource).toBeCloseTo(0.22 / 0.7);
+    const three = resolveMarkedKill(createGongfaRuntime({ gongfaId: "myriad-beast-grove" }), 82, ["boar", "fox", "deer"], ["three-spirits-hunt-together"]);
+    expect(three.authored.resource).toBeCloseTo(0.68);
+    let rotating = resolveMarkedKill(createGongfaRuntime({ gongfaId: "myriad-beast-grove" }), 83, ["boar", "fox"], ["unending-rotating-hunt"]);
+    const firstGain = rotating.authored.resource;
+    rotating = resolveMarkedKill(rotating, 84, ["boar", "fox"], ["unending-rotating-hunt"]);
+    expect(rotating.authored.resource).toBe(firstGain);
+  });
+
   it("calls one ancestor per living Myriad Beast species and consumes Kinship", () => {
     const runtime = createGongfaRuntime({ gongfaId: "myriad-beast-grove" });
     runtime.authored.resource = 1;
@@ -2735,6 +2783,48 @@ describe("Gongfa runtime", () => {
     expect(ancestor?.species).toEqual(["boar", "deer"]);
     expect(ancestor?.fate).toBe("encirclement");
     expect(result.runtime.authored.resource).toBe(0);
+  });
+
+  it("gives the Black Tortoise and White Ape replacement jobs distinct action contracts", () => {
+    const actionFor = (masteryId: string, species: "boar" | "deer") => {
+      const runtime = createGongfaRuntime({ gongfaId: "myriad-beast-grove" });
+      return advanceGongfaRuntime(runtime, {
+        kind: "tick", deltaMs: 1300, nearbyEnemyCount: 2, playerX: 0, playerY: 0,
+        isMoving: true, learnedMasteryIds: [masteryId],
+        targets: [
+          { targetId: 11, x: 100, y: 0, healthRatio: 1, rank: "ordinary" },
+          { targetId: 12, x: 140, y: 30, healthRatio: 1, rank: "elite" }
+        ]
+      }).commands.find((command) => command.kind === "authored-beast-action" && command.species === species);
+    };
+    const tortoise = actionFor("black-tortoise-guards-the-grove", "boar");
+    const ape = actionFor("white-ape-calls-the-pack", "deer");
+    expect(tortoise?.form).toBe("black-tortoise");
+    expect(tortoise?.radius).toBeLessThan(ape?.radius ?? 0);
+    expect(ape?.form).toBe("white-ape");
+    expect(ape?.rootMs).toBe(0);
+  });
+
+  it("makes Ancestors Return revive the missing species and establish a real protection window", () => {
+    const runtime = createGongfaRuntime({ gongfaId: "myriad-beast-grove" });
+    runtime.authored.resource = 1;
+    const fox = runtime.authored.anchors.find((anchor) => anchor.beastSpecies === "fox")!;
+    fox.beastState = "downed";
+    fox.value = 0;
+    const result = advanceGongfaRuntime(runtime, {
+      kind: "skill2", skill2Id: "myriad-beast-stampede",
+      targets: [{ targetId: 13, x: 140, y: 0, healthRatio: 1, rank: "boss" }],
+      learnedMasteryIds: ["ancestors-return-to-the-grove"]
+    });
+    const ancestor = result.commands.find((command) => command.kind === "authored-beast-ancestors");
+    expect(ancestor?.fate).toBe("return-grove");
+    expect(result.runtime.authored.anchors.every((beast) => beast.beastState === "living")).toBe(true);
+    expect(result.runtime.authored.targetLedger[-45]).toBe(4200);
+    const guarded = advanceGongfaRuntime(result.runtime, {
+      kind: "incoming-damage", amount: 100, sourceDistance: 400,
+      learnedMasteryIds: ["ancestors-return-to-the-grove"]
+    });
+    expect(guarded.commands.find((command) => command.kind === "incoming-damage")?.finalDamage).toBe(55);
   });
 
   it("grows Ancient Tree Rings only while rooted and loses them after readable uprooting", () => {
