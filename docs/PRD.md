@@ -174,11 +174,11 @@ The `Fire + Metal` choice set contains `Burning Ring Scripture`, the hybrid `Cri
 
 `Crimson Furnace Sword Art` package:
 
-- Skill 1: `Furnace Needles`, focused blades that embed and detonate
+- Skill 1: `Furnace Needles`, focused blades that create visible nodes across living enemies
 - Skill tags: `projectile`, `explosive`, `fire`, `metal`
-- Defining passive: `Crucible Pressure`; explosions build Pressure that globally increases `explosive` Skill radius
-- Rank-10 Skill 2: `Furnace Cascade`, which detonates existing embeds and scatters chain-starting heated fragments
-- Pre-rank-10 Mastery develops needle damage/cycling, embed thresholds, explosion size, and Pressure generation, retention, or global explosive synergy
+- Defining passive: `Crucible Pressure`; live nodes, links, branches, and loops determine Pressure, which vanishes when topology breaks
+- Rank-10 Skill 2: `Furnace Cascade`, which ignites every connected furnace and allows exactly one reforged follow-up chain
+- Pre-rank-10 Mastery develops needle cadence, connected-node thresholds, conduit reach, topology weight, and the destination of reforged fragments
 
 ### Metal Gongfa Trio
 

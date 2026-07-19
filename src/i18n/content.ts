@@ -75,10 +75,10 @@ const zhGongfa: Record<GongfaId, GongfaTranslation> = {
     skill2: { name: "刃甲反震", description: "减免伤害与贴身闪避为刃甲蓄势，最终迸发环形金刃。" }
   },
   "crimson-furnace-sword-art": {
-    name: "赤炉剑法", lore: "热刃入体，以炉压引爆连锁锋火。", combatRole: "埋刃蓄势后集中引爆，连锁击破关键目标。", visualMotif: "赤红炉纹、灼热针芒与黑芯爆裂。",
-    skill1: { name: "炉心飞针", description: "灼热剑针刺入敌体，达到埋针阈值后同时爆裂。" },
-    passive: { name: "熔炉压势", resource: "炉压", description: "爆裂积累炉压，扩大所有爆破类术法的范围。" },
-    skill2: { name: "炉火连爆", description: "同时引爆所有埋针，并散出灼热碎片，引发新的连锁爆裂。" }
+    name: "赤炉剑法", lore: "以众生为炉位，以赤针为炉脉；脉成则火自炉心传遍全网。", combatRole: "在多个活体之间锻成可见炉网，再从炉压最高的核心依线点燃。", visualMotif: "实体赤红身炉纹、明亮炉脉、分叉回路与由芯至缘的逐节点点火。",
+    skill1: { name: "炉心飞针", description: "自动优先刺入未埋针的威胁与能延长炉网的目标；精英与首领可承载多枚炉位。" },
+    passive: { name: "熔炉压势", resource: "炉压", description: "炉压仅由同时存在的活体炉位、连线、分叉与回路即时计算；目标死亡或距离断开便立刻消失。" },
+    skill2: { name: "炉火连铸", description: "活体炉位与炉压足够时点燃全部相连炉网，每枚被消耗的飞针重铸一次，并且最多再引发一轮追链。" }
   },
   "blazing-feather-art": {
     name: "烈羽诀", lore: "凝聚烈火灵气，化作追魂炎羽。", combatRole: "逐步增强的追踪齐射，最终化作漫天烈羽。", visualMotif: "橙红羽扇、余烬微光与凤凰垂翼般的火雨。",
@@ -821,41 +821,9 @@ const zhMasteryDrafts: Record<string, { name: string; lore: string }> =
     "name": "逆轮回照",
     "lore": "闪避消耗十八热力并逆转现有日轮，不会生成额外攻击。"
   },
-  "crimson-piercing-needles": {
-    "name": "穿孔炉针",
-    "lore": "将针集中到更深的刺穿线上。"
-  },
-  "scattered-needles": {
-    "name": "散落的炉针",
-    "lore": "松开更广泛的包埋针喷雾。"
-  },
-  "volatile-embeds": {
-    "name": "易失性嵌入",
-    "lore": "嵌入物用更少的针就能达到爆炸。"
-  },
-  "sustained-crucible": {
-    "name": "持续坩埚",
-    "lore": "坩埚压力的流失速度要慢得多。"
-  },
-  "resonant-crucible": {
-    "name": "共振坩埚",
-    "lore": "每次爆炸都会产生明显更大的压力。"
-  },
-  "overpressure-detonation": {
-    "name": "超压爆炸",
-    "lore": "压力使爆炸半径急剧膨胀。"
-  },
-  "furnace-heart": {
-    "name": "炉心",
-    "lore": "坩埚压力为每次射击增加了额外的针头。"
-  },
-  "relentless-needles": {
-    "name": "无情的针",
-    "lore": "高压失去了第二针截击。"
-  },
-  "crucible-nova": {
-    "name": "坩埚新星",
-    "lore": "全压力在熔炉新星中爆发，然后重置。"
+  "falling-star-forge": {
+    "name": "星火落炉",
+    "lore": "旧爆点旁锻出一次性地面炉位。"
   }
 };
 
@@ -911,11 +879,15 @@ const zhMasteryOverrides: Record<string, { name: string; lore?: string; gain?: s
   "perfect-sun-consumption": { name: "完阳蚀火", gain: "热力不低于七十二时闭合八个轮位", cost: "完整日轮每秒消耗十点热力", scope: "高热覆盖与持续消耗" },
   "sunspot-lure": { name: "黑子纳敌", gain: "入隙敌人减速，捕获焰段伤害提高 85%", cost: "八个轮位只保留三个", scope: "缺口、减速与下一次焰段接触" },
   "reverse-wheel-reflection": { name: "逆轮回照", gain: "闪避逆转全部现有日轮", cost: "每次逆转消耗十八热力，且不生成攻击", scope: "闪避与现有日轮转向" },
-  "crimson-piercing-needles": { name: "赤炉贯针" },
-  "volatile-embeds": { name: "易爆埋针" },
-  "sustained-crucible": { name: "恒压熔炉" },
-  "resonant-crucible": { name: "共鸣熔炉" },
-  "crucible-nova": { name: "熔炉新星" },
+  "piercing-furnace-needle": { name: "贯炉重针", gain: "精英与首领可承载更多强炉位", cost: "炉脉距离短，难以铺开", scope: "炉位容量、连线距离与点火威力" },
+  "scattered-furnace-needles": { name: "散炉布针", gain: "远距离铺设更宽炉网", cost: "至少六炉位且点火要求更高", scope: "目标分布、连线距离与点火门槛" },
+  "volatile-furnace-core": { name: "易爆炉芯", gain: "三炉位即可低压点火", cost: "爆发弱且分叉稀少", scope: "点火门槛与传播威力" },
+  "sealed-leftover-needle": { name: "封炉余针", gain: "埋针目标死亡后留下四秒弱炉位", cost: "余针弱且会消散", scope: "死亡地点与临时炉网" },
+  "star-furnace-resonance": { name: "星炉共鸣", gain: "每炉位连接两个近邻，能形成分叉回路", cost: "点火伤害分流", scope: "连线度数、分叉、回路与伤害" },
+  "compressed-furnace": { name: "压炉密铸", gain: "短炉脉高速传递强火", cost: "分散炉位不计入炉网", scope: "连线距离、有效拓扑与伤害" },
+  "furnace-heart-reforge": { name: "炉心回铸", gain: "碎针追向尚未埋针的幸存目标", cost: "碎针较弱且需要新宿主", scope: "点火后的碎针选敌" },
+  "myriad-edges-return": { name: "万锋归炉", gain: "全部碎针集中最强幸存者", cost: "不再扩散至新目标", scope: "点火后的碎针集中" },
+  "falling-star-forge": { name: "星火落炉", gain: "旧爆点旁落下单次地面炉位", cost: "炉位固定且会消散", scope: "点火后的地面拓扑" },
   "life-seeking-fierce-wraith": { name: "索命厉魂" },
   "wandering-mist-host": { name: "游雾群鬼" },
   "lantern-returning-underworld-attendant": { name: "归灯冥侍" },

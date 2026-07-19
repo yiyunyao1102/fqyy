@@ -90,7 +90,7 @@ const subtypeNumberFields = {
   jinfeng: ["momentum", "momentumBuildRate", "momentumDecayRate", "momentumWaveBonus", "momentumAppliedRangeBonus", "momentumAppliedSpreadBonus", "momentumAppliedLifetimeBonus", "walkingStormCooldownRemaining"],
   gengjin: ["guardValue", "guardBuildRate", "guardDecayRate", "guardMitigation", "guardMitigationBonus", "guardAppliedRetaliationBonus", "guardAppliedAuraBonus", "guardAppliedDamageBonus", "bladeShellCharge", "bladeShellThreshold", "bladeShellCooldownRemaining", "bladeShellCasts", "gengjinPulseCooldownRemaining"],
   burningRing: ["heat", "heatBuildRate", "heatDecayRate", "heatAppliedCooldownBonus", "heatAuraSpeedBonus", "ringSegments", "counterflowRingSegments", "counterflowRingAppliedSegments", "counterflowRingRadiusBonus", "counterflowRingCooldownRemaining", "solarFlareCooldownRemaining", "solarFlareCasts", "sunspotCooldownRemaining"],
-  crimsonFurnace: ["pressure", "pressureBuildRate", "pressureDecayRate", "pressureAppliedRadiusBonus", "pressureRadiusScale", "embedThreshold", "furnaceCascadeCooldownRemaining", "furnaceCascadeCasts"],
+  crimsonFurnace: ["pressure", "pressureBuildRate", "pressureDecayRate", "pressureAppliedRadiusBonus", "pressureRadiusScale", "embedThreshold", "furnaceCascadeCooldownRemaining", "furnaceCascadeCasts", "networkIgnitionCooldownRemaining"],
   blazingFeather: ["emberStacks", "emberDurationRemaining", "emberAppliedDamageBonus"],
   surge: ["stacks", "durationRemaining", "appliedDamageBonus"]
 } as const;

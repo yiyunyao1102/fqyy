@@ -35,7 +35,7 @@ export const gongfaVisualIdentities: Record<GongfaId, GongfaVisualIdentity> = {
   "yujian-jue": { motifId: "ordered-sword-seal", label: "Ordered sword seal", geometry: "sword-seal", accent: 0xb7e3ff, secondary: 0xf4f8ff, spokes: 5, trailStyle: "straight blade script" },
   "jinfeng-gong": { motifId: "golden-horizon", label: "Golden cutting horizon", geometry: "corridor", accent: 0xf2d273, secondary: 0xdcefff, spokes: 3, trailStyle: "parallel wind ribbons" },
   "gengjin-huti": { motifId: "forged-brace", label: "Layered forged brace", geometry: "armor", accent: 0xd4b068, secondary: 0xffe7a6, spokes: 6, trailStyle: "heavy plate seams and fracture scars" },
-  "crimson-furnace-sword-art": { motifId: "crucible-rune", label: "Crimson crucible rune", geometry: "furnace", accent: 0xff654f, secondary: 0xffc05c, spokes: 4, trailStyle: "black-core ember sparks" },
+  "crimson-furnace-sword-art": { motifId: "living-furnace-network", label: "Living furnace topology", geometry: "furnace", accent: 0xff654f, secondary: 0xffc05c, spokes: 4, trailStyle: "node-link ignition" },
   "blazing-feather-art": { motifId: "phoenix-pinions", label: "Phoenix feather pinions", geometry: "wings", accent: 0xff9b61, secondary: 0xffdc79, spokes: 7, trailStyle: "falling ember barbs" },
   "burning-ring-scripture": { motifId: "revolving-corona", label: "Revolving solar corona", geometry: "solar", accent: 0xff8b4f, secondary: 0xffef9a, spokes: 10, trailStyle: "segmented solar orbit" },
   "scarlet-wave-manual": { motifId: "intersecting-scarlet-surfaces", label: "Left and right crescents creating one seam", geometry: "crescent", accent: 0xff5f42, secondary: 0xffbb69, spokes: 3, trailStyle: "two wave surfaces and their real molten intersection" },

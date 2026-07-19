@@ -118,6 +118,8 @@ export interface AuthoredTargetFact {
   y: number;
   healthRatio: number;
   rank: "ordinary" | "elite" | "boss";
+  embedStacks?: number;
+  embedPower?: number;
 }
 
 export interface YujianState {
@@ -202,6 +204,7 @@ export interface CrimsonFurnaceState {
   embedThreshold: number;
   furnaceCascadeCooldownRemaining: number;
   furnaceCascadeCasts: number;
+  networkIgnitionCooldownRemaining: number;
 }
 
 export type GongfaRuntimeEvent =
@@ -269,7 +272,6 @@ export type GongfaRuntimeEvent =
       learnedMasteryIds?: string[];
     }
   | { kind: "incoming-damage"; amount: number; incomingAngle?: number; sourceDistance?: number; sourceId?: number; healthRatio?: number; skill2Id?: string; learnedMasteryIds?: string[] }
-  | { kind: "crimson-detonation"; x: number; y: number; damage: number; fromEmbed: boolean }
   | {
       kind: "enemy-death";
       targetId: number;
@@ -281,6 +283,8 @@ export type GongfaRuntimeEvent =
       playerX: number;
       playerY: number;
       targets?: AuthoredTargetFact[];
+      embedStacks?: number;
+      embedPower?: number;
     };
 
 export type GongfaRuntimeCommand =
@@ -428,32 +432,26 @@ export type GongfaRuntimeCommand =
       count: number;
     }
   | {
-      kind: "crimson-detonation";
-      x: number;
-      y: number;
-      radius: number;
-      splashDamage: number;
-    }
-  | {
       kind: "lodge-crimson-needle";
       targetId: number;
       embedStacks: number;
       embedPower: number;
     }
   | {
-      kind: "detonate-crimson-embed";
-      targetId: number;
-      sourceDamage: number;
-      fragment: CrimsonFragmentSpec;
-    }
-  | {
-      kind: "furnace-cascade";
-      sourceDamage: {
-        embedPowerMultiplier: number;
-        stackDamage: number;
+      kind: "authored-crimson-network";
+      nodes: Array<{ targetId: number; x: number; y: number; nodeCount: number; ground: boolean; core: boolean }>;
+      links: Array<{ fromTargetId: number; toTargetId: number }>;
+      pressure: number;
+      ignition?: {
+        targetIds: number[];
+        damage: number;
+        propagationDelayMs: number;
+        fragmentLaw: "reforge" | "return" | "falling-star";
+        fragmentCount: number;
+        followUp: boolean;
       };
-      fragment: CrimsonFragmentSpec;
-      masteryCast: MasterySkill2Cast;
+      sourceGongfaId: GongfaId;
+      masteryCast?: MasterySkill2Cast;
     }
   | {
       kind: "feather-rain-formation";
@@ -775,16 +773,6 @@ export interface WaveProjectileSpec {
 export interface MasterySkill2Cast {
   skill2Id: AuthoredSkill2Intent;
   cooldownMs?: number;
-}
-
-export interface CrimsonFragmentSpec {
-  radius: number;
-  maxTargets: number;
-  delayMs: number;
-  delayStepMs: number;
-  damage: number;
-  speed: number;
-  lifetimeMs: number;
 }
 
 export interface GongfaRuntimeResult {
@@ -1453,19 +1441,6 @@ function buildExplicitTimedSkill2Command(
   }
 }
 
-function buildCrimsonFragmentSpec(runtime: GongfaRuntime): CrimsonFragmentSpec {
-  const combat = skill2Combat(runtime);
-  return {
-    radius: 220,
-    maxTargets: 2,
-    delayMs: 100,
-    delayStepMs: 60,
-    damage: Math.max(4, Math.floor(combat.damage * 0.45)),
-    speed: combat.projectileSpeed + 80,
-    lifetimeMs: Math.max(420, combat.projectileLifetimeMs - 120)
-  };
-}
-
 interface CreateGongfaRuntimeInput {
   gongfaId: GongfaId;
   mastery?: Partial<GongfaMasteryCheckpointFields>;
@@ -1625,8 +1600,25 @@ const crimsonFurnaceDefaults: CrimsonFurnaceState = {
   pressureRadiusScale: 0.45,
   embedThreshold: 3,
   furnaceCascadeCooldownRemaining: 0,
-  furnaceCascadeCasts: 0
+  furnaceCascadeCasts: 0,
+  networkIgnitionCooldownRemaining: 0
 };
+
+const legacyCrimsonMasteryIds: Record<string, string> = {
+  "crimson-piercing-needles": "piercing-furnace-needle",
+  "scattered-needles": "scattered-furnace-needles",
+  "volatile-embeds": "volatile-furnace-core",
+  "sustained-crucible": "sealed-leftover-needle",
+  "resonant-crucible": "star-furnace-resonance",
+  "overpressure-detonation": "compressed-furnace",
+  "furnace-heart": "furnace-heart-reforge",
+  "relentless-needles": "myriad-edges-return",
+  "crucible-nova": "falling-star-forge"
+};
+
+function migrateCrimsonMasteryId(gongfaId: GongfaId, id: string): string {
+  return gongfaId === "crimson-furnace-sword-art" ? legacyCrimsonMasteryIds[id] ?? id : id;
+}
 
 const yujianDefaults: YujianState = {
   executionSealTriggers: 0,
@@ -1952,11 +1944,13 @@ function syncCrimsonFurnaceCombat(runtime: GongfaRuntime): void {
     return;
   }
 
-  const stageState = gongfaConfigs["crimson-furnace-sword-art"].stages.lianqi!;
-  const desiredRadiusBonus = Math.floor(state.pressure * state.pressureRadiusScale);
-  runtime.combat.range += desiredRadiusBonus - state.pressureAppliedRadiusBonus;
-  state.pressureAppliedRadiusBonus = desiredRadiusBonus;
-  runtime.combat.range = Math.max(stageState.range, runtime.combat.range);
+  // Pressure describes the current living graph. It must never become a
+  // permanent/global explosion-radius stat, including for restored old saves.
+  runtime.combat.range = Math.max(
+    gongfaConfigs["crimson-furnace-sword-art"].stages.lianqi!.range,
+    runtime.combat.range - state.pressureAppliedRadiusBonus
+  );
+  state.pressureAppliedRadiusBonus = 0;
 }
 
 export function createGongfaRuntime(input: CreateGongfaRuntimeInput): GongfaRuntime {
@@ -1974,8 +1968,8 @@ export function createGongfaRuntime(input: CreateGongfaRuntimeInput): GongfaRunt
       ...createEmptyGongfaMastery(),
       ...input.mastery,
       masterySkill2Id: input.mastery?.masterySkill2Id,
-      masteryLearnedIds: [...(input.mastery?.masteryLearnedIds ?? [])],
-      upgradeSelectionIds: [...(input.mastery?.upgradeSelectionIds ?? [])],
+      masteryLearnedIds: (input.mastery?.masteryLearnedIds ?? []).map((id) => migrateCrimsonMasteryId(input.gongfaId, id)),
+      upgradeSelectionIds: (input.mastery?.upgradeSelectionIds ?? []).map((id) => migrateCrimsonMasteryId(input.gongfaId, id)),
       masteryPendingRanks: [...(input.mastery?.masteryPendingRanks ?? [])]
     },
     combat: {
@@ -2692,6 +2686,289 @@ function advanceIronwoodRampart(
   commands.push(ironwoodWallCommand(runtime, learnedIds, event.deltaMs));
 }
 
+type CrimsonNetworkNode = {
+  targetId: number;
+  x: number;
+  y: number;
+  nodeCount: number;
+  power: number;
+  ground: boolean;
+};
+
+type CrimsonNetworkLink = { fromTargetId: number; toTargetId: number };
+
+function crimsonNetworkForm(learnedIds: string[]): {
+  linkRange: number;
+  linksPerNode: number;
+  ignitionNodes: number;
+  ignitionPressure: number;
+  damageScale: number;
+  propagationDelayMs: number;
+} {
+  let linkRange = 210;
+  let linksPerNode = 1;
+  let ignitionNodes = 4;
+  let ignitionPressure = 42;
+  let damageScale = 1;
+  let propagationDelayMs = 115;
+  if (learnedIds.includes("piercing-furnace-needle")) {
+    linkRange = 155; ignitionNodes = 3; ignitionPressure = 32; damageScale = 1.45;
+  }
+  if (learnedIds.includes("scattered-furnace-needles")) {
+    linkRange = 285; ignitionNodes = 6; ignitionPressure = 58; damageScale = 0.72;
+  }
+  if (learnedIds.includes("volatile-furnace-core")) {
+    ignitionNodes = 3; ignitionPressure = 28; damageScale = 0.68; linksPerNode = 1;
+  }
+  if (learnedIds.includes("star-furnace-resonance")) {
+    linksPerNode = 2; damageScale *= 0.72;
+  }
+  if (learnedIds.includes("compressed-furnace")) {
+    linkRange = 128; ignitionPressure += 8; damageScale *= 1.65; propagationDelayMs = 70;
+  }
+  return { linkRange, linksPerNode, ignitionNodes, ignitionPressure, damageScale, propagationDelayMs };
+}
+
+function crimsonNodeCapacity(rank: AuthoredTargetFact["rank"], learnedIds: string[]): number {
+  const base = rank === "boss" ? 5 : rank === "elite" ? 3 : 1;
+  if (!learnedIds.includes("piercing-furnace-needle")) return base;
+  return rank === "boss" ? 7 : rank === "elite" ? 5 : 1;
+}
+
+function buildCrimsonTopology(
+  runtime: GongfaRuntime,
+  targets: AuthoredTargetFact[],
+  learnedIds: string[]
+): { nodes: CrimsonNetworkNode[]; links: CrimsonNetworkLink[]; pressure: number; coreTargetId?: number; coreTargetIds: number[] } {
+  const form = crimsonNetworkForm(learnedIds);
+  const linkRange = form.linkRange * (1 + Math.max(0, (runtime.crimsonFurnace?.pressureRadiusScale ?? 0.45) - 0.45) * 0.25);
+  const living = targets.flatMap((target) => {
+    const nodeCount = Math.min(
+      crimsonNodeCapacity(target.rank, learnedIds),
+      Math.max(0, target.embedStacks ?? 0)
+    );
+    return nodeCount > 0 ? [{
+      targetId: target.targetId,
+      x: target.x,
+      y: target.y,
+      nodeCount,
+      power: Math.max(nodeCount, target.embedPower ?? nodeCount),
+      ground: false
+    }] : [];
+  });
+  const ground = runtime.authored.anchors
+    .filter((anchor) => anchor.kind === "furnace-node" && (anchor.remainingMs ?? 1) > 0)
+    .map((anchor) => ({
+      targetId: anchor.targetId ?? -1,
+      x: anchor.x,
+      y: anchor.y,
+      nodeCount: Math.max(1, Math.floor(anchor.value)),
+      power: Math.max(1, anchor.maxValue ?? anchor.value),
+      ground: true
+    }));
+  const nodes = [...living, ...ground];
+  const linkKeys = new Set<string>();
+  const links: CrimsonNetworkLink[] = [];
+  for (const node of nodes) {
+    const nearest = nodes
+      .filter((other) => other.targetId !== node.targetId)
+      .map((other) => ({ other, distance: Math.sqrt(distanceSquared(node.x, node.y, other.x, other.y)) }))
+      .filter(({ distance }) => distance <= linkRange)
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, form.linksPerNode);
+    for (const { other } of nearest) {
+      const low = Math.min(node.targetId, other.targetId);
+      const high = Math.max(node.targetId, other.targetId);
+      const key = `${low}:${high}`;
+      if (linkKeys.has(key)) continue;
+      linkKeys.add(key);
+      links.push({ fromTargetId: low, toTargetId: high });
+    }
+  }
+  const degrees = new Map<number, number>();
+  links.forEach((link) => {
+    degrees.set(link.fromTargetId, (degrees.get(link.fromTargetId) ?? 0) + 1);
+    degrees.set(link.toTargetId, (degrees.get(link.toTargetId) ?? 0) + 1);
+  });
+  const connectedIds = new Set(links.flatMap((link) => [link.fromTargetId, link.toTargetId]));
+  const connectedNodes = nodes.filter((node) => connectedIds.has(node.targetId));
+  const branches = [...degrees.values()].filter((degree) => degree >= 3).length;
+  const adjacency = new Map<number, number[]>();
+  links.forEach((link) => {
+    adjacency.set(link.fromTargetId, [...(adjacency.get(link.fromTargetId) ?? []), link.toTargetId]);
+    adjacency.set(link.toTargetId, [...(adjacency.get(link.toTargetId) ?? []), link.fromTargetId]);
+  });
+  const unseen = new Set(connectedIds);
+  const componentTargetIds: number[][] = [];
+  while (unseen.size > 0) {
+    const start = unseen.values().next().value as number;
+    const component: number[] = [];
+    const queue = [start];
+    unseen.delete(start);
+    while (queue.length > 0) {
+      const targetId = queue.shift()!;
+      component.push(targetId);
+      for (const neighbor of adjacency.get(targetId) ?? []) {
+        if (!unseen.delete(neighbor)) continue;
+        queue.push(neighbor);
+      }
+    }
+    componentTargetIds.push(component);
+  }
+  const components = componentTargetIds.length;
+  const loops = Math.max(0, links.length - connectedNodes.length + components);
+  const rawPressure = connectedNodes.reduce((sum, node) => sum + node.nodeCount * 7, 0) +
+    links.length * 6 + branches * 8 + loops * 12;
+  const pressure = Math.min(100, rawPressure * ((runtime.crimsonFurnace?.pressureBuildRate ?? 1.4) / 1.4));
+  const coreTargetIds = componentTargetIds.flatMap((component) => {
+    const core = connectedNodes.filter((node) => component.includes(node.targetId)).sort((a, b) =>
+      (degrees.get(b.targetId) ?? 0) - (degrees.get(a.targetId) ?? 0) || b.nodeCount - a.nodeCount || b.power - a.power
+    )[0];
+    return core ? [core.targetId] : [];
+  });
+  const core = [...connectedNodes].sort((a, b) =>
+    (degrees.get(b.targetId) ?? 0) - (degrees.get(a.targetId) ?? 0) || b.nodeCount - a.nodeCount || b.power - a.power
+  )[0];
+  return { nodes, links, pressure, coreTargetId: core?.targetId, coreTargetIds };
+}
+
+function connectedCrimsonTargetIds(
+  topology: ReturnType<typeof buildCrimsonTopology>,
+  startTargetId: number
+): number[] {
+  const found = new Set<number>([startTargetId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const link of topology.links) {
+      if (found.has(link.fromTargetId) && !found.has(link.toTargetId)) { found.add(link.toTargetId); changed = true; }
+      if (found.has(link.toTargetId) && !found.has(link.fromTargetId)) { found.add(link.fromTargetId); changed = true; }
+    }
+  }
+  return [...found];
+}
+
+function crimsonFragmentLaw(learnedIds: string[]): "reforge" | "return" | "falling-star" {
+  if (learnedIds.includes("myriad-edges-return")) return "return";
+  if (learnedIds.includes("falling-star-forge")) return "falling-star";
+  return "reforge";
+}
+
+function advanceCrimsonNetwork(
+  runtime: GongfaRuntime,
+  event: Extract<GongfaRuntimeEvent, { kind: "tick" }>,
+  learnedIds: string[],
+  commands: GongfaRuntimeCommand[]
+): void {
+  const state = runtime.crimsonFurnace;
+  if (!state) return;
+  state.networkIgnitionCooldownRemaining = Math.max(0, state.networkIgnitionCooldownRemaining - event.deltaMs);
+  if (runtime.authored.phase === 1) {
+    runtime.authored.targetLedger[-300] = Math.max(0, (runtime.authored.targetLedger[-300] ?? 5000) - event.deltaMs);
+    if (runtime.authored.targetLedger[-300] === 0) runtime.authored.phase = 0;
+  }
+  runtime.authored.anchors.forEach((anchor) => {
+    if (anchor.kind === "furnace-node") anchor.remainingMs = Math.max(0, (anchor.remainingMs ?? 0) - event.deltaMs);
+  });
+  runtime.authored.anchors = runtime.authored.anchors.filter((anchor) =>
+    anchor.kind !== "furnace-node" || (anchor.remainingMs ?? 0) > 0
+  );
+  const topology = buildCrimsonTopology(runtime, event.targets ?? [], learnedIds);
+  state.pressure = topology.pressure;
+  runtime.authored.resource = topology.pressure;
+  runtime.authored.charges = topology.nodes.reduce((sum, node) => sum + node.nodeCount, 0);
+  runtime.authored.secondaryResource = topology.links.length;
+  runtime.authored.maxCharges = 100;
+  const form = crimsonNetworkForm(learnedIds);
+  const coreId = topology.coreTargetId;
+  const componentIds = coreId === undefined ? [] : connectedCrimsonTargetIds(topology, coreId);
+  const componentNodes = topology.nodes.filter((node) => componentIds.includes(node.targetId));
+  const componentNodeCount = componentNodes.reduce((sum, node) => sum + node.nodeCount, 0);
+  const allConnectedIds = new Set(topology.links.flatMap((link) => [link.fromTargetId, link.toTargetId]));
+  const allConnectedNodeCount = topology.nodes
+    .filter((node) => allConnectedIds.has(node.targetId))
+    .reduce((sum, node) => sum + node.nodeCount, 0);
+  const cascadeStats = skill2RefinementStats(runtime);
+  const skill2Ready = runtime.mastery.masterySkill2Id === "furnace-cascade" &&
+    runtime.mastery.masterySkill2CooldownRemaining === 0 &&
+    topology.pressure >= Math.max(46, 58 - cascadeStats.coverage * 4) && allConnectedNodeCount >= 5;
+  const refinementNodeDelta = (state.embedThreshold ?? 3) - 3;
+  const ordinaryReady = componentNodeCount >= Math.max(3, form.ignitionNodes + refinementNodeDelta) &&
+    topology.pressure >= form.ignitionPressure;
+  const reservingForCascade = runtime.mastery.masterySkill2Id === "furnace-cascade" &&
+    runtime.mastery.masterySkill2CooldownRemaining === 0;
+  let ignition: Extract<GongfaRuntimeCommand, { kind: "authored-crimson-network" }>["ignition"];
+  let masteryCast: MasterySkill2Cast | undefined;
+  if (state.networkIgnitionCooldownRemaining === 0 &&
+      (skill2Ready || (ordinaryReady && !reservingForCascade)) && coreId !== undefined) {
+    const targetIds = skill2Ready
+      ? topology.nodes.filter((node) => allConnectedIds.has(node.targetId)).map((node) => node.targetId)
+      : componentIds;
+    const consumed = topology.nodes.filter((node) => targetIds.includes(node.targetId));
+    const consumedCount = consumed.reduce((sum, node) => sum + node.nodeCount, 0);
+    const followUp = runtime.authored.phase === 1;
+    const fragmentCount = followUp ? 0 : consumedCount;
+    ignition = {
+      targetIds,
+      damage: Math.max(1, Math.floor(runtime.combat.damage * form.damageScale *
+        (skill2Ready ? cascadeStats.damageScale : 1) * (1 + topology.pressure / 125))),
+      propagationDelayMs: Math.max(45, Math.floor(form.propagationDelayMs * (skill2Ready ? cascadeStats.cadenceScale : 1))),
+      fragmentLaw: crimsonFragmentLaw(learnedIds),
+      fragmentCount,
+      followUp
+    };
+    if (!followUp && ignition.fragmentLaw === "falling-star") {
+      for (const [index, node] of consumed.slice(0, 6).entries()) {
+        const angle = index * 2.399963;
+        const targetId = -200_000 - runtime.authored.activationCount;
+        runtime.authored.activationCount += 1;
+        runtime.authored.anchors.push({
+          kind: "furnace-node",
+          x: node.x + Math.cos(angle) * 42,
+          y: node.y + Math.sin(angle) * 42,
+          value: 1,
+          maxValue: Math.max(1, node.power * 0.45),
+          remainingMs: 5200,
+          targetId
+        });
+      }
+    }
+    if (skill2Ready) {
+      masteryCast = {
+        skill2Id: "furnace-cascade",
+        cooldownMs: Math.floor(authoredSkill2Plans["furnace-cascade"].cooldownMs * cascadeStats.cadenceScale)
+      };
+      state.furnaceCascadeCasts += 1;
+    }
+    runtime.authored.anchors = runtime.authored.anchors.filter((anchor) =>
+      anchor.kind !== "furnace-node" || !targetIds.includes(anchor.targetId ?? -1)
+    );
+    if (!followUp && fragmentCount > 0) {
+      runtime.authored.phase = 1;
+      runtime.authored.targetLedger[-300] = 5000;
+    } else {
+      runtime.authored.phase = 0;
+      delete runtime.authored.targetLedger[-300];
+    }
+    state.networkIgnitionCooldownRemaining = Math.max(
+      700,
+      targetIds.length * ignition.propagationDelayMs + 300
+    );
+  }
+  commands.push({
+    kind: "authored-crimson-network",
+    nodes: topology.nodes.map((node) => ({
+      targetId: node.targetId, x: node.x, y: node.y, nodeCount: node.nodeCount,
+      ground: node.ground, core: topology.coreTargetIds.includes(node.targetId)
+    })),
+    links: topology.links,
+    pressure: topology.pressure,
+    ...(ignition ? { ignition } : {}),
+    sourceGongfaId: runtime.gongfaId,
+    ...(masteryCast ? { masteryCast } : {})
+  });
+}
+
 function advanceAuthoredWorldFacts(
   runtime: GongfaRuntime,
   event: GongfaRuntimeEvent,
@@ -2703,6 +2980,23 @@ function advanceAuthoredWorldFacts(
     : runtime.mastery.masteryLearnedIds;
 
   if (event.kind === "enemy-death") {
+    if (runtime.gongfaId === "crimson-furnace-sword-art" &&
+        learnedIds.includes("sealed-leftover-needle") && (event.embedStacks ?? 0) > 0) {
+      const targetId = -100_000 - state.activationCount;
+      state.activationCount += 1;
+      state.anchors.push({
+        kind: "furnace-node",
+        x: event.x,
+        y: event.y,
+        value: 1,
+        maxValue: Math.max(1, (event.embedPower ?? 1) * 0.35),
+        remainingMs: 4200,
+        targetId
+      });
+      state.anchors = state.anchors.filter((anchor) => anchor.kind !== "furnace-node").concat(
+        state.anchors.filter((anchor) => anchor.kind === "furnace-node").slice(-5)
+      );
+    }
     if (runtime.gongfaId === "mist-wraith-canon") {
       const value = event.rank === "boss" ? 3 : event.rank === "elite" ? 2 : 1;
       const remainingMs = event.rank === "boss" ? 20_000 : event.rank === "elite" ? 12_000 : 6_000;
@@ -2957,6 +3251,11 @@ function advanceAuthoredWorldFacts(
     state.continuousMovementMs = 0;
     state.continuousDistance = 0;
     state.lastMovementAngle = undefined;
+  }
+
+  if (runtime.gongfaId === "crimson-furnace-sword-art") {
+    advanceCrimsonNetwork(runtime, event, learnedIds, commands);
+    return;
   }
 
   if (runtime.gongfaId === "ironwood-wave-form") {
@@ -3845,7 +4144,8 @@ export function advanceGongfaRuntime(
     event.kind === "tick" &&
     event.skill2Enabled !== false &&
     next.mastery.masterySkill2Id &&
-    next.gongfaId !== "ironwood-wave-form"
+    next.gongfaId !== "ironwood-wave-form" &&
+    next.gongfaId !== "crimson-furnace-sword-art"
   ) {
     const cooldown = advanceTimedMasterySkill2Cooldown(
       next.mastery.masterySkill2Id,
@@ -3938,6 +4238,11 @@ export function advanceGongfaRuntime(
     if (event.skill2Id === "ironwood-surge-form" && next.gongfaId === "ironwood-wave-form") {
       // Ironwood Citadel is not a timed button-like cast. The rampart state
       // raises it only after three recorded high-Stability drives.
+      return { runtime: next, commands };
+    }
+    if (event.skill2Id === "furnace-cascade" && next.gongfaId === "crimson-furnace-sword-art") {
+      // Furnace Cascade is earned from the visible live topology and is
+      // triggered by the tick that proves enough nodes and Pressure.
       return { runtime: next, commands };
     }
     const skill2Stats = skill2RefinementStats(next);
@@ -4478,25 +4783,6 @@ export function advanceGongfaRuntime(
         }
       });
     }
-    if (
-      event.skill2Id === "furnace-cascade" &&
-      next.crimsonFurnace &&
-      (event.eligibleTargetCount ?? 0) > 0
-    ) {
-      next.crimsonFurnace.furnaceCascadeCasts += 1;
-      commands.push({
-        kind: "furnace-cascade",
-        sourceDamage: {
-          embedPowerMultiplier: skill2Stats.damageScale,
-          stackDamage: 3 + skill2Stats.coverage
-        },
-        fragment: buildCrimsonFragmentSpec(next),
-        masteryCast: {
-          skill2Id: "furnace-cascade",
-          cooldownMs: Math.floor(authoredSkill2Plans["furnace-cascade"].cooldownMs * skill2Stats.cadenceScale)
-        }
-      });
-    }
     const skill2 = getAuthoredSkill2Plan(event.skill2Id);
     if (
       skill2?.trigger === "timed" &&
@@ -4698,15 +4984,6 @@ export function advanceGongfaRuntime(
       embedPower
     });
 
-    if (embedStacks >= state.embedThreshold) {
-      commands.push({
-        kind: "detonate-crimson-embed",
-        targetId: event.targetId,
-        sourceDamage: Math.max(event.damage, embedPower + embedStacks * 2),
-        fragment: buildCrimsonFragmentSpec(next)
-      });
-    }
-
     return { runtime: next, commands };
   }
 
@@ -4896,27 +5173,6 @@ export function advanceGongfaRuntime(
     state.bladeShellCharge = state.guardValue;
     commands.push({ kind: "incoming-damage", finalDamage });
     commands.push(gengjinBraceCommand(next));
-    return { runtime: next, commands };
-  }
-
-  if (event.kind === "crimson-detonation") {
-    const state = next.crimsonFurnace;
-    if (!state) {
-      return { runtime: next, commands };
-    }
-
-    const pressureGain = event.fromEmbed
-      ? Math.max(0.8, event.damage * 0.14)
-      : Math.max(0.5, event.damage * 0.1);
-    state.pressure = Math.min(100, state.pressure + pressureGain * state.pressureBuildRate);
-    syncCrimsonFurnaceCombat(next);
-    commands.push({
-      kind: "crimson-detonation",
-      x: event.x,
-      y: event.y,
-      radius: Math.max(20, next.combat.range + Math.floor(state.pressure * 0.35)),
-      splashDamage: Math.max(1, Math.floor(event.damage + state.pressure * 0.4))
-    });
     return { runtime: next, commands };
   }
 
@@ -5112,24 +5368,6 @@ export function advanceGongfaRuntime(
       if (release) commands.push(release);
     }
     commands.push(gengjinBraceCommand(next));
-  }
-
-  if (next.crimsonFurnace) {
-    // Crucible Nova: full Pressure erupts in a furnace nova, then resets.
-    // Checked before decay, since Pressure only ever decays in the tick.
-    if ((event.learnedMasteryIds ?? []).includes("crucible-nova") && next.crimsonFurnace.pressure >= 100) {
-      next.crimsonFurnace.pressure = 30;
-      commands.push({
-        kind: "aura-burst",
-        damage: Math.max(1, Math.floor(next.combat.damage * 2)),
-        count: 14
-      });
-    }
-    next.crimsonFurnace.pressure = Math.max(
-      0,
-      next.crimsonFurnace.pressure - next.crimsonFurnace.pressureDecayRate * deltaSeconds
-    );
-    syncCrimsonFurnaceCombat(next);
   }
 
   if (!next.burningRing) {
@@ -5732,21 +5970,9 @@ export function planGongfaAttack(
     }];
   }
   if (runtime.crimsonFurnace) {
-    const learnedMasteryIds = options.learnedMasteryIds ?? [];
-    let count = runtime.combat.count;
-    // Furnace Heart: Crucible Pressure adds needles to each volley.
-    if (learnedMasteryIds.includes("furnace-heart")) {
-      count += Math.floor(runtime.crimsonFurnace.pressure / 20);
-    }
-    const commands: GongfaRuntimeCommand[] = [{ kind: "crimson-furnace-volley", count }];
-    // Relentless Needles: high Pressure looses a second volley.
-    if (learnedMasteryIds.includes("relentless-needles") && runtime.crimsonFurnace.pressure >= 40) {
-      commands.push({
-        kind: "crimson-furnace-volley",
-        count: Math.max(1, Math.floor(count / 2))
-      });
-    }
-    return commands;
+    // Skill 1 only forges/lodges nodes. Ignition and all propagation are
+    // advanced from the live topology during tick processing.
+    return [{ kind: "crimson-furnace-volley", count: runtime.combat.count }];
   }
 
   switch (runtime.combat.pattern) {
@@ -5873,6 +6099,8 @@ export interface CrimsonTargetFact {
   embedStacks: number;
   distance: number;
   active: boolean;
+  linkDistance?: number;
+  priorityBody?: boolean;
 }
 
 export function selectCrimsonFurnaceTargetIndexes(
@@ -5882,11 +6110,12 @@ export function selectCrimsonFurnaceTargetIndexes(
   return candidates
     .filter((enemy) => enemy.active)
     .sort((a, b) => {
-      const embedPriority = b.embedStacks - a.embedStacks;
-      if (embedPriority !== 0) {
-        return embedPriority;
-      }
-
+      const bodyPriority = Number(b.priorityBody ?? false) - Number(a.priorityBody ?? false);
+      if (bodyPriority !== 0) return bodyPriority;
+      const freshPriority = Number(a.embedStacks > 0) - Number(b.embedStacks > 0);
+      if (freshPriority !== 0) return freshPriority;
+      const connectionPriority = (a.linkDistance ?? 1_000_000_000) - (b.linkDistance ?? 1_000_000_000);
+      if (connectionPriority !== 0) return connectionPriority;
       return a.distance - b.distance;
     })
     .slice(0, Math.max(0, count))
@@ -6030,45 +6259,29 @@ function applyStructuralTransformation(
   }
 
   if (runtime.crimsonFurnace) {
-    if (transformationId === "crimson-piercing-needles") {
+    if (transformationId === "piercing-furnace-needle") {
       const next = copyRuntime(runtime);
-      next.combat.pierce += 2;
       next.combat.count = Math.max(1, next.combat.count - 1);
+      next.combat.damage = Math.round(next.combat.damage * 1.2 * 100) / 100;
       return next;
     }
 
-    if (transformationId === "scattered-needles") {
+    if (transformationId === "scattered-furnace-needles") {
       const next = copyRuntime(runtime);
       next.combat.count += 2;
+      next.combat.damage = Math.round(next.combat.damage * 0.78 * 100) / 100;
       return next;
     }
 
-    if (transformationId === "volatile-embeds") {
+    if (transformationId === "volatile-furnace-core") {
       const next = copyRuntime(runtime);
-      next.crimsonFurnace!.embedThreshold = Math.max(1, next.crimsonFurnace!.embedThreshold - 1);
+      next.combat.cooldownMs = Math.max(280, Math.floor(next.combat.cooldownMs * 0.82));
       return next;
     }
 
-    if (transformationId === "sustained-crucible") {
-      const next = copyRuntime(runtime);
-      next.crimsonFurnace!.pressureDecayRate = Math.max(
-        0.08,
-        next.crimsonFurnace!.pressureDecayRate * 0.55
-      );
-      return next;
-    }
-
-    if (transformationId === "resonant-crucible") {
-      const next = copyRuntime(runtime);
-      next.crimsonFurnace!.pressureBuildRate += 0.7;
-      return next;
-    }
-
-    if (transformationId === "overpressure-detonation") {
-      const next = copyRuntime(runtime);
-      next.crimsonFurnace!.pressureRadiusScale += 0.35;
-      syncCrimsonFurnaceCombat(next);
-      return next;
+    if (["sealed-leftover-needle", "star-furnace-resonance", "compressed-furnace",
+      "furnace-heart-reforge", "myriad-edges-return", "falling-star-forge"].includes(transformationId)) {
+      return copyRuntime(runtime);
     }
   }
 

@@ -272,6 +272,7 @@ export class GameScene extends Phaser.Scene {
   private iceMirrorMarker?: Phaser.GameObjects.Graphics;
   private gengjinBraceMarker?: Phaser.GameObjects.Graphics;
   private ironwoodRampartMarker?: Phaser.GameObjects.Graphics;
+  private crimsonFurnaceNetworkMarker?: Phaser.GameObjects.Graphics;
   private recentGongfaMotifs: string[] = [];
   private readonly activePickupEffects = new Set<Phaser.GameObjects.Sprite>();
   private readonly activeLingcaoEffects = new Set<Phaser.GameObjects.Sprite>();
@@ -414,6 +415,12 @@ export class GameScene extends Phaser.Scene {
           walls.some((wall) => wall.participating) ? "Rampart driving" :
             walls.length > 0 ? "Rampart rooted" : runtime.authored.phaseElapsedMs > 0 ? "Constructing" : "Awaiting threat";
       return `Ironwood: ${rampartState} · Stability ${Math.floor(runtime.authored.resource)}/${runtime.authored.maxCharges} · Strong drives ${Math.min(3, runtime.authored.cycleCount)}/3 · Walls ${walls.length}`;
+    }
+    if (runtime.gongfaId === "crimson-furnace-sword-art") {
+      const state = runtime.authored.phase === 1 ? "Reforged follow-up armed" :
+        runtime.crimsonFurnace?.networkIgnitionCooldownRemaining ? "Ignition propagating" :
+          runtime.authored.secondaryResource > 0 ? "Living furnace linked" : "Forging nodes";
+      return `Crimson Furnace: ${state} · Pressure ${Math.floor(runtime.authored.resource)}/100 · Nodes ${runtime.authored.charges} · Links ${Math.floor(runtime.authored.secondaryResource)}`;
     }
     if (runtime.gongfaId === "heavenfall-body-art") {
       return `Falling Star: ${runtime.authored.phase === 1 ? "Transformed" : "Ready"} · Mass ${Math.floor(runtime.authored.resource * 100)}% · ${Math.max(0, Math.ceil((6000 - runtime.authored.phaseElapsedMs) / 100) / 10)}s`;
@@ -797,7 +804,9 @@ export class GameScene extends Phaser.Scene {
           ? "boss" as const
           : candidate.maxHealth >= 150
             ? "elite" as const
-            : "ordinary" as const
+            : "ordinary" as const,
+        embedStacks: candidate.embedStacks,
+        embedPower: candidate.embedPower
       }));
     if (!enemy.presentDefeat()) {
       return;
@@ -813,7 +822,9 @@ export class GameScene extends Phaser.Scene {
         velocityY,
         playerX: this.player.x,
         playerY: this.player.y,
-        targets: survivingTargetFacts
+        targets: survivingTargetFacts,
+        embedStacks: enemy.embedStacks,
+        embedPower: enemy.embedPower
       });
       this.adoptPrimaryRuntime(result.runtime);
       this.executeGongfaRuntimeCommands(result.commands, result.runtime);
@@ -937,18 +948,15 @@ export class GameScene extends Phaser.Scene {
         body.reset(target.x, target.y);
         body.setVelocity(0, 0);
         body.enable = false;
+        this.time.delayedCall(4800, () => {
+          if (!projectile.active || projectile.lodgedEnemy !== target) return;
+          target.embedStacks = Math.max(0, target.embedStacks - 1);
+          target.embedPower = Math.max(0, target.embedPower - projectile.damage);
+          projectile.destroy();
+        });
         return;
       }
 
-      if (command.kind === "detonate-crimson-embed") {
-        const target = this.getEnemyByCombatTargetId(command.targetId);
-        if (!target?.active) {
-          return;
-        }
-
-        this.detonateCrimsonEnemy(target, command.sourceDamage, command.fragment);
-        this.destroyLodgedCrimsonNeedles(target);
-      }
     });
 
     return targetDied || enemy.health <= 0;
@@ -1677,7 +1685,9 @@ export class GameScene extends Phaser.Scene {
             ? "boss" as const
             : enemy.maxHealth >= 150
               ? "elite" as const
-              : "ordinary" as const
+              : "ordinary" as const,
+          embedStacks: enemy.embedStacks,
+          embedPower: enemy.embedPower
         }));
       const commands = planGongfaAttack(runtime, this.runState.elapsedMs, {
         playerX: this.player.x,
@@ -1795,21 +1805,7 @@ export class GameScene extends Phaser.Scene {
       if (!projectile.active) {
         return;
       }
-
-      if (projectile.lodgedEnemy?.active) {
-        projectile.lodgedEnemy.embedStacks = Math.max(0, projectile.lodgedEnemy.embedStacks - 1);
-        projectile.lodgedEnemy.embedPower = Math.max(
-          0,
-          projectile.lodgedEnemy.embedPower - projectile.damage
-        );
-      }
-      this.triggerCrimsonDetonation(
-        sourceGongfaId,
-        projectile.x,
-        projectile.y,
-        projectile.damage,
-        false
-      );
+      if (projectile.lodgedEnemy?.active) return;
       projectile.destroy();
     });
   }
@@ -2182,7 +2178,9 @@ export class GameScene extends Phaser.Scene {
           ? "boss" as const
           : enemy.maxHealth >= 150
             ? "elite" as const
-            : "ordinary" as const
+            : "ordinary" as const,
+        embedStacks: enemy.embedStacks,
+        embedPower: enemy.embedPower
       }));
     for (const runtime of this.learnedGongfaRuntimes) {
       const threatRadius = getGongfaRuntimeTickThreatRadius(runtime);
@@ -2318,15 +2316,11 @@ export class GameScene extends Phaser.Scene {
         return;
       }
 
-      if (command.kind === "crimson-detonation") {
-        this.applyCrimsonDetonation(command);
+      if (command.kind === "authored-crimson-network") {
+        this.syncAuthoredCrimsonNetwork(command);
         return;
       }
 
-      if (command.kind === "furnace-cascade") {
-        this.fireFurnaceCascade(command);
-        return;
-      }
 
       if (command.kind === "incoming-damage") {
         this.player.applyDamage(command.finalDamage);
@@ -4646,21 +4640,90 @@ export class GameScene extends Phaser.Scene {
     this.recordGongfaMotif(`${identity.motifId}:${command.guard ? "complete-guard" : "broken-corona"}`);
   }
 
-  private fireFurnaceCascade(
-    command: Extract<GongfaRuntimeCommand, { kind: "furnace-cascade" }>
+  private syncAuthoredCrimsonNetwork(
+    command: Extract<GongfaRuntimeCommand, { kind: "authored-crimson-network" }>
   ): void {
-    const primedEnemies = (this.enemies.getChildren() as Enemy[]).filter(
-      (enemy) => enemy.active && enemy.embedStacks > 0
-    );
+    const identity = getGongfaVisualIdentity(command.sourceGongfaId);
+    this.crimsonFurnaceNetworkMarker ??= this.applyGongfaEffectVisualHierarchy(
+      this.add.graphics(), command.sourceGongfaId
+    ).setDepth(13);
+    const visual = this.crimsonFurnaceNetworkMarker;
+    visual.clear();
+    const byId = new Map(command.nodes.map((node) => [node.targetId, node]));
+    const pressureAlpha = 0.35 + Math.min(1, command.pressure / 100) * 0.55;
+    for (const link of command.links) {
+      const from = byId.get(link.fromTargetId);
+      const to = byId.get(link.toTargetId);
+      if (!from || !to) continue;
+      visual.lineStyle(command.pressure >= 58 ? 4 : 2, identity.secondary, pressureAlpha);
+      visual.lineBetween(from.x, from.y, to.x, to.y);
+      visual.lineStyle(1, 0x2a0b08, 0.8);
+      visual.lineBetween(from.x + 3, from.y + 3, to.x + 3, to.y + 3);
+    }
+    for (const node of command.nodes) {
+      const radius = 8 + Math.min(5, node.nodeCount) * 2.5;
+      visual.fillStyle(node.ground ? 0x5a2419 : identity.accent, node.ground ? 0.55 : 0.82);
+      visual.lineStyle(node.core ? 4 : 2, node.core ? 0xffe18a : identity.secondary, 0.95);
+      visual.fillCircle(node.x, node.y, radius);
+      visual.strokeCircle(node.x, node.y, radius + (node.core ? 5 : 1));
+      for (let needle = 0; needle < node.nodeCount; needle += 1) {
+        const angle = needle * Math.PI * 2 / Math.max(1, node.nodeCount) - Math.PI / 2;
+        visual.lineBetween(
+          node.x + Math.cos(angle) * (radius - 2), node.y + Math.sin(angle) * (radius - 2),
+          node.x + Math.cos(angle) * (radius + 9), node.y + Math.sin(angle) * (radius + 9)
+        );
+      }
+    }
+    if (command.nodes.length > 0) {
+      const motif = command.ignition
+        ? command.ignition.followUp ? "one-follow-up-chain" : "core-propagation"
+        : command.links.length > command.nodes.length ? "looped-furnace" : "living-node-network";
+      this.recordGongfaMotif(`${identity.motifId}:${motif}`);
+    }
+    if (!command.ignition) return;
 
-    primedEnemies.forEach((enemy) => {
-      this.detonateCrimsonEnemy(
-        enemy,
-        enemy.embedPower * command.sourceDamage.embedPowerMultiplier +
-          enemy.embedStacks * command.sourceDamage.stackDamage,
-        command.fragment
-      );
-      this.destroyLodgedCrimsonNeedles(enemy);
+    const ignition = command.ignition;
+    const orderedIds = [...ignition.targetIds].sort((a, b) =>
+      Number(!(byId.get(a)?.core)) - Number(!(byId.get(b)?.core))
+    );
+    orderedIds.forEach((targetId, index) => {
+      this.time.delayedCall(index * ignition.propagationDelayMs, () => {
+        const node = byId.get(targetId);
+        if (!node) return;
+        const flash = this.add.circle(node.x, node.y, 12, identity.secondary, 0.72).setDepth(17);
+        this.tweens.add({ targets: flash, scale: 2.2, alpha: 0, duration: 220, onComplete: () => flash.destroy() });
+        const enemy = this.getEnemyByCombatTargetId(targetId);
+        if (!enemy?.active) return;
+        enemy.embedStacks = 0;
+        enemy.embedPower = 0;
+        this.destroyLodgedCrimsonNeedles(enemy);
+        if (enemy.receiveDamage(ignition.damage * Math.max(1, node.nodeCount))) this.resolveEnemyDeath(enemy);
+      });
+    });
+    if (ignition.fragmentCount <= 0 || ignition.followUp) return;
+    const delay = orderedIds.length * ignition.propagationDelayMs + 160;
+    this.time.delayedCall(delay, () => {
+      const survivors = (this.enemies.getChildren() as Enemy[]).filter((enemy) => enemy.active);
+      if (ignition.fragmentLaw === "falling-star" || survivors.length === 0) return;
+      const unembedded = survivors.filter((enemy) => enemy.embedStacks === 0);
+      const strongest = [...survivors].sort((a, b) => b.maxHealth - a.maxHealth || b.health - a.health)[0];
+      const targets = ignition.fragmentLaw === "return"
+        ? strongest ? Array.from({ length: ignition.fragmentCount }, () => strongest) : []
+        : Array.from({ length: Math.min(ignition.fragmentCount, unembedded.length) }, (_, index) => unembedded[index]!);
+      targets.forEach((enemy, index) => this.time.delayedCall(index * 55, () => {
+        if (!enemy.active) return;
+        this.spawnCrimsonNeedle(
+          byId.get(orderedIds[0] ?? 0)?.x ?? this.player.x,
+          byId.get(orderedIds[0] ?? 0)?.y ?? this.player.y,
+          enemy,
+          Math.max(1, ignition.damage * 0.42),
+          this.combatState.projectileSpeed * 0.88,
+          this.combatState.projectileLifetimeMs,
+          this.combatState.projectileTexture,
+          this.combatState.tint,
+          command.sourceGongfaId
+        );
+      }));
     });
   }
 
@@ -4800,12 +4863,18 @@ export class GameScene extends Phaser.Scene {
 
   private getCrimsonFurnaceTargets(count: number): Enemy[] {
     const enemies = this.enemies.getChildren() as Enemy[];
+    const embedded = enemies.filter((enemy) => enemy.active && enemy.embedStacks > 0);
+    const learnedIds = this.gongfaCollection.byId["crimson-furnace-sword-art"]?.mastery.masteryLearnedIds ?? [];
     const targetIndexes = selectCrimsonFurnaceTargetIndexes(
       enemies.map((enemy, index) => ({
         index,
         active: enemy.active,
         embedStacks: enemy.embedStacks,
-        distance: Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.x, enemy.y)
+        distance: Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.x, enemy.y),
+        linkDistance: embedded.length === 0 ? undefined : Math.min(...embedded
+          .filter((other) => other !== enemy)
+          .map((other) => Phaser.Math.Distance.Between(enemy.x, enemy.y, other.x, other.y))),
+        priorityBody: learnedIds.includes("piercing-furnace-needle") && enemy.maxHealth >= 150
       })),
       count
     );
@@ -4813,101 +4882,11 @@ export class GameScene extends Phaser.Scene {
     return targetIndexes.map((index) => enemies[index]).filter((enemy) => enemy?.active);
   }
 
-  private triggerCrimsonDetonation(
-    sourceGongfaId: GongfaId | undefined,
-    x: number,
-    y: number,
-    damage: number,
-    fromEmbed: boolean
-  ): void {
-    const runtime = sourceGongfaId
-      ? this.gongfaCollection.byId[sourceGongfaId]
-      : this.gongfaRuntime;
-    if (!runtime) {
-      return;
-    }
-
-    const result = advanceGongfaRuntime(runtime, {
-      kind: "crimson-detonation",
-      x,
-      y,
-      damage,
-      fromEmbed
-    });
-    this.adoptPrimaryRuntime(result.runtime);
-    this.executeGongfaRuntimeCommands(result.commands, result.runtime);
-    this.restorePrimaryRuntimeAdapter();
-  }
-
-  private applyCrimsonDetonation(
-    command: Extract<GongfaRuntimeCommand, { kind: "crimson-detonation" }>
-  ): void {
-    const hits = this.getEnemiesWithinRadiusFrom(command.x, command.y, command.radius);
-    hits.forEach((enemy) => {
-      const died = enemy.receiveDamage(command.splashDamage);
-      if (died) {
-        this.resolveEnemyDeath(enemy);
-      }
-    });
-
-  }
-
-  private detonateCrimsonEnemy(
-    enemy: Enemy,
-    sourceDamage: number,
-    fragment: Extract<GongfaRuntimeCommand, { kind: "detonate-crimson-embed" }>["fragment"]
-  ): void {
-    const embedStacks = enemy.embedStacks;
-    const embedPower = enemy.embedPower;
-    enemy.embedStacks = 0;
-    enemy.embedPower = 0;
-    this.spawnCrimsonFragments(enemy.x, enemy.y, fragment);
-    this.triggerCrimsonDetonation(
-      this.gongfaRuntime?.gongfaId,
-      enemy.x,
-      enemy.y,
-      Math.max(sourceDamage, embedPower + embedStacks * 2),
-      true
-    );
-  }
-
   private destroyLodgedCrimsonNeedles(enemy: Enemy): void {
     (this.projectiles.getChildren() as Projectile[]).forEach((projectile) => {
       if (projectile.active && projectile.lodgedEnemy === enemy) {
         projectile.destroy();
       }
-    });
-  }
-
-  private spawnCrimsonFragments(
-    x: number,
-    y: number,
-    fragment: Extract<GongfaRuntimeCommand, { kind: "detonate-crimson-embed" }>["fragment"]
-  ): void {
-    const combat = { ...this.combatState };
-    const sourceGongfaId = this.gongfaRuntime?.gongfaId;
-    const fragments = this.getEnemiesWithinRadiusFrom(x, y, fragment.radius).slice(
-      0,
-      fragment.maxTargets
-    );
-    fragments.forEach((enemy, index) => {
-      this.time.delayedCall(fragment.delayMs + index * fragment.delayStepMs, () => {
-        if (!enemy.active) {
-          return;
-        }
-
-        this.spawnCrimsonNeedle(
-          x,
-          y,
-          enemy,
-          fragment.damage,
-          fragment.speed,
-          fragment.lifetimeMs,
-          combat.projectileTexture,
-          combat.tint,
-          sourceGongfaId
-        );
-      });
     });
   }
 

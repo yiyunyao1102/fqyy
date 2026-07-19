@@ -48,11 +48,11 @@ export const gongfaPackageCatalog: Record<GongfaId, GongfaPackageDefinition> = {
     skill2: { id: "blade-shell-rebound", name: "Blade-Shell Rebound", description: "At high Guard and nearby danger, releases exactly the stored total by the chosen law, clears Guard, and repairs fractures.", tags: ["reflect", "metal", "defensive"] }
   },
   "crimson-furnace-sword-art": {
-    combatRole: "Embed-and-detonate setup that chains explosive priority bursts.",
-    visualMotif: "Crimson furnace sigils, heated needle trails, and black-core detonations.",
-    skill1: { id: "furnace-needles", name: "Furnace Needles", description: "Focused heated blades lodge in enemies and detonate together when their embed threshold is reached.", tags: ["homing", "projectile", "explosive", "fire", "metal"] },
-    passive: { name: "Crucible Pressure", resource: "Pressure", description: "Explosions build Pressure, expanding the radius of every explosive-tagged Skill." },
-    skill2: { id: "furnace-cascade", name: "Furnace Cascade", description: "All current embeds detonate at once and scatter heated fragments that begin new chain reactions.", tags: ["homing", "projectile", "explosive", "fire", "metal"] }
+    combatRole: "Forge a visible network across several living enemies, then ignite it from its highest-pressure core.",
+    visualMotif: "Solid crimson body-runes, bright furnace links, branching loops, and core-to-edge propagation.",
+    skill1: { id: "furnace-needles", name: "Furnace Needles", description: "Automatically embeds fresh threats and bodies that extend the live furnace topology; elites can carry several nodes.", tags: ["homing", "projectile", "explosive", "fire", "metal"] },
+    passive: { name: "Crucible Pressure", resource: "Pressure", description: "Pressure is recalculated from simultaneous live nodes, links, branches, and loops; death or separation removes it immediately." },
+    skill2: { id: "furnace-cascade", name: "Furnace Cascade", description: "At sufficient live Pressure, ignites every connected furnace and reforges each consumed needle for exactly one follow-up chain.", tags: ["homing", "projectile", "explosive", "fire", "metal"] }
   },
   "blazing-feather-art": {
     combatRole: "Escalating homing volleys that become a fiery aerial barrage.",

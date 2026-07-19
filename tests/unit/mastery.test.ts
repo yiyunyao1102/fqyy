@@ -476,28 +476,28 @@ describe("mastery progression", () => {
       rank: 3,
       seed: "seed-123",
       learnedIds: []
-    })).toEqual(["crimson-piercing-needles", "scattered-needles", "volatile-embeds"]);
+    })).toEqual(["piercing-furnace-needle", "scattered-furnace-needles", "volatile-furnace-core"]);
 
     expect(getDeterministicMasteryChoiceIds({
       gongfaId: "crimson-furnace-sword-art",
       rank: 6,
       seed: "seed-123",
       learnedIds: []
-    })).toEqual(["sustained-crucible", "resonant-crucible", "overpressure-detonation"]);
+    })).toEqual(["sealed-leftover-needle", "star-furnace-resonance", "compressed-furnace"]);
 
     expect(getDeterministicMasteryChoiceIds({
       gongfaId: "crimson-furnace-sword-art",
       rank: 9,
       seed: "seed-123",
       learnedIds: []
-    })).toEqual(["furnace-heart", "relentless-needles", "crucible-nova"]);
+    })).toEqual(["furnace-heart-reforge", "myriad-edges-return", "falling-star-forge"]);
   });
 
   it("excludes Crimson Furnace sibling Transformations once one per milestone is learned", () => {
     for (const [rank, learned] of [
-      [3, "scattered-needles"],
-      [6, "resonant-crucible"],
-      [9, "relentless-needles"]
+      [3, "scattered-furnace-needles"],
+      [6, "star-furnace-resonance"],
+      [9, "myriad-edges-return"]
     ] as const) {
       expect(getDeterministicMasteryChoiceIds({
         gongfaId: "crimson-furnace-sword-art",

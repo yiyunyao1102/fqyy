@@ -380,6 +380,36 @@ test("Ironwood Wave Form renders a physical rooted wall and driven wall without 
   expect(snapshot.visuals.gongfaMotifs.some((motif) => motif.startsWith("forged-brace:"))).toBe(false);
 });
 
+test("Crimson Furnace renders living nodes, links, and core propagation instead of radius blasts", async ({ page }) => {
+  await startNewRun(page);
+  const sustainTimer = await page.evaluate(() => window.setInterval(
+    () => window.__gameTest?.forceSpawnHealingPill(100),
+    300
+  ));
+  await page.evaluate(() => {
+    window.__gameTest!.forceEquipGongfa("crimson-furnace-sword-art");
+    window.__gameTest!.forceSpawnEnemies(5);
+  });
+  await page.waitForFunction(() =>
+    window.__gameTest?.getSnapshot().visuals.gongfaMotifs.includes(
+      "living-furnace-network:living-node-network"
+    ),
+    undefined,
+    { timeout: 10_000 }
+  );
+  await page.waitForFunction(() =>
+    window.__gameTest?.getSnapshot().visuals.gongfaMotifs.includes(
+      "living-furnace-network:core-propagation"
+    ),
+    undefined,
+    { timeout: 10_000 }
+  );
+  await page.evaluate((timer) => window.clearInterval(timer), sustainTimer);
+  const snapshot = await page.evaluate(() => window.__gameTest!.getSnapshot());
+  expect(snapshot.visuals.gongfaMotifs.some((motif) => motif.startsWith("crucible-rune:"))).toBe(false);
+  expect(snapshot.visuals.gongfaMotifs.some((motif) => motif.startsWith("ironwood-rampart:"))).toBe(false);
+});
+
 test("Gengjin Huti renders a persistent forged brace without substitute projectiles", async ({ page }) => {
   await startNewRun(page);
   await page.evaluate(() => {

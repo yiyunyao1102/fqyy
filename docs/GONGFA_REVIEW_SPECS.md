@@ -40,7 +40,7 @@ implementation, testing, balance review, and future regression checks.
 | Ice Mirror Guard / 冰镜护体 | Hudao | Approved | Implemented and verified |
 | Gengjin Huti / 庚金护体 | Hudao | Approved | Implemented and verified |
 | Ironwood Wave Form / 铁木浪形 | Hudao | Approved | Implemented and verified |
-| Crimson Furnace Sword Art / 赤炉剑法 | Hudao | Approved | Pending redesign |
+| Crimson Furnace Sword Art / 赤炉剑法 | Hudao | Approved | Implemented and verified |
 | Vermilion Bird Covenant / 朱雀灵契 | Yuling | Approved | Pending redesign |
 | Black Tide Scripture / 玄潮经 | Yuling | Approved | Pending redesign |
 | Heavenfall Body Art / 天坠锻体术 | Yuling | Approved | Pending redesign |
@@ -705,6 +705,30 @@ new fragments may produce exactly one follow-up chain, preventing infinite recur
 
 **Must not become:** Sword Burial corpse inventory, Yujian returning ammo, Green Vine
 tethers, ordinary explosive projectiles, or generic hit-built Pressure.
+
+### Implemented tuning contract
+
+- Ordinary bodies hold one node, elites three, and bosses five before branch modifiers.
+  Base links reach `210px`; disconnected or dead bodies contribute no Pressure on the
+  next simulation tick. A successfully lodged needle remains a node for `4.8s`, while
+  a needle that never reaches a body keeps the ordinary short projectile lifetime.
+- Pressure is recomputed from node, visible-link, branch, and loop weight. It never
+  modifies global explosion radius and is never stored after topology loss.
+- Base ignition requires four connected nodes and `42` Pressure. The visible core is
+  selected by link degree, node count, then embedded power; propagation advances one
+  node every `115ms`.
+- Rank-3 branches change body capacity, reach, threshold, cadence, and force. Rank-6
+  branches respectively preserve a `4.2s` death-site node, add a second nearest link,
+  or reduce reach to `128px` for stronger propagation.
+- Rank-9 fragments seek fresh bodies, focus the strongest survivor, or plant `5.2s`
+  one-use ground nodes. Fragments can trigger exactly one follow-up within five
+  seconds; that follow-up creates no further fragments.
+- Furnace Cascade requires at least five connected nodes and `58` live Pressure. It
+  records cooldown only when the state-earned ignition actually occurs. While Cascade
+  is ready, the furnace reserves its ordinary four-node ignition until that five-node
+  threshold is reached; during Cascade cooldown, ordinary ignition proceeds normally.
+- Presentation uses solid body-runes, needle spokes, black-core red/gold links,
+  highlighted cores, and core-to-edge flashes.
 
 ---
 

@@ -113,11 +113,11 @@ describe("Gongfa runtime", () => {
     const secondary = collection.byId["crimson-furnace-sword-art"]!;
 
     const advanced = advanceGongfaRuntime(secondary, {
-      kind: "crimson-detonation",
-      x: 10,
-      y: 20,
-      damage: 20,
-      fromEmbed: true
+      kind: "tick", deltaMs: 16, nearbyEnemyCount: 4,
+      targets: [0, 1, 2, 3].map((index) => ({
+        targetId: index + 1, x: index * 44, y: 0, healthRatio: 1,
+        rank: "ordinary" as const, embedStacks: 1, embedPower: 10
+      }))
     });
 
     expect(collection.primaryGongfaId).toBe("burning-ring-scripture");
@@ -508,6 +508,7 @@ describe("Gongfa runtime", () => {
         runtime.authored.cycleCount = 3;
         runtime.mastery.masterySkill2Id = skill2Id;
       }
+      if (gongfaId === "crimson-furnace-sword-art") runtime.mastery.masterySkill2Id = skill2Id;
       if (gongfaId === "burning-ring-scripture") runtime.burningRing!.heat = 100;
       if (gongfaId === "black-tide-scripture") runtime.authored.cycleCount = 3;
       if (gongfaId === "vermilion-bird-covenant") {
@@ -565,7 +566,15 @@ describe("Gongfa runtime", () => {
         );
       }
       const result =
-        gongfaId === "ironwood-wave-form"
+        gongfaId === "crimson-furnace-sword-art"
+          ? advanceGongfaRuntime(runtime, {
+              kind: "tick", deltaMs: 16, nearbyEnemyCount: 5, playerX: 0, playerY: 0,
+              targets: [0, 1, 2, 3, 4].map((index) => ({
+                targetId: 60 + index, x: index * 42, y: 0, healthRatio: 1,
+                rank: "ordinary" as const, embedStacks: 1, embedPower: 10
+              }))
+            })
+        : gongfaId === "ironwood-wave-form"
           ? advanceGongfaRuntime(runtime, {
               kind: "tick", deltaMs: 16, nearbyEnemyCount: 1, playerX: 0, playerY: 0,
               targets: [{ targetId: 51, x: 120, y: 0, healthRatio: 1, rank: "ordinary" }]
@@ -1472,31 +1481,23 @@ describe("Gongfa runtime", () => {
         { index: 3, active: true, embedStacks: 2, distance: 40 }
       ],
       2
-    )).toEqual([3, 1]);
+    )).toEqual([0, 3]);
 
     const result = advanceGongfaRuntime(pressurized, {
-      kind: "crimson-detonation",
-      x: 12,
-      y: 34,
-      damage: 20,
-      fromEmbed: true
+      kind: "tick", deltaMs: 16, nearbyEnemyCount: 4,
+      targets: [0, 1, 2, 3].map((index) => ({
+        targetId: index + 1, x: index * 48, y: 0, healthRatio: 1,
+        rank: "ordinary" as const, embedStacks: 1, embedPower: 10
+      }))
     });
 
-    expect(result.runtime.crimsonFurnace).toMatchObject({
-      pressure: 4.424,
-      pressureBuildRate: 1.5799999999999998,
-      embedThreshold: 2
+    expect(result.runtime.crimsonFurnace?.pressure).toBeGreaterThan(0);
+    expect(result.runtime.combat.range).toBe(initial.combat.range);
+    expect(result.commands[0]).toMatchObject({
+      kind: "authored-crimson-network",
+      nodes: expect.arrayContaining([expect.objectContaining({ targetId: 1, nodeCount: 1 })]),
+      links: expect.any(Array)
     });
-    expect(result.runtime.combat.range).toBeGreaterThan(initial.combat.range);
-    expect(result.commands).toEqual([
-      {
-        kind: "crimson-detonation",
-        x: 12,
-        y: 34,
-        radius: 54,
-        splashDamage: 21
-      }
-    ]);
     expect(planGongfaAttack(result.runtime, 1200)).toEqual([
       {
         kind: "crimson-furnace-volley",
@@ -1512,46 +1513,19 @@ describe("Gongfa runtime", () => {
       embedPower: 6
     });
 
-    expect(hitResult.commands).toEqual([
-      {
-        kind: "lodge-crimson-needle",
-        targetId: 7,
-        embedStacks: 2,
-        embedPower: 26
-      },
-      {
-        kind: "detonate-crimson-embed",
-        targetId: 7,
-        sourceDamage: 30,
-        fragment: {
-          radius: 220,
-          maxTargets: 2,
-          delayMs: 100,
-          delayStepMs: 60,
-          damage: 6,
-          speed: 530,
-          lifetimeMs: 780
-        }
-      }
-    ]);
+    expect(hitResult.commands).toEqual([{
+      kind: "lodge-crimson-needle", targetId: 7, embedStacks: 2, embedPower: 26
+    }]);
   });
 
-  it("keeps Crimson detonation inert for non-Crimson runtimes", () => {
-    const runtime = createGongfaRuntime({ gongfaId: "yujian-jue" });
-
-    const result = advanceGongfaRuntime(runtime, {
-      kind: "crimson-detonation",
-      x: 12,
-      y: 34,
-      damage: 20,
-      fromEmbed: true
-    });
-
-    expect(result.runtime).toEqual(runtime);
+  it("does not let direct Furnace Cascade bypass its live topology requirement", () => {
+    const runtime = createGongfaRuntime({ gongfaId: "crimson-furnace-sword-art" });
+    const result = advanceGongfaRuntime(runtime, { kind: "skill2", skill2Id: "furnace-cascade" });
     expect(result.commands).toEqual([]);
+    expect(result.runtime.crimsonFurnace?.furnaceCascadeCasts).toBe(0);
   });
 
-  it("restores Crimson state, decays pressure, and records Furnace Cascade casts", () => {
+  it("restores Crimson state, drops disconnected Pressure, and earns Furnace Cascade from topology", () => {
     const restored = createGongfaRuntime({
       gongfaId: "crimson-furnace-sword-art",
       crimsonFurnace: {
@@ -1563,44 +1537,29 @@ describe("Gongfa runtime", () => {
       }
     });
 
-    expect(restored.combat.range).toBe(64);
+    restored.mastery.masterySkill2Id = "furnace-cascade";
+    expect(restored.combat.range).toBe(52);
 
     const decayed = advanceGongfaRuntime(restored, {
       kind: "tick",
       deltaMs: 500,
       nearbyEnemyCount: 0
     }).runtime;
-
-    expect(decayed.crimsonFurnace?.pressure).toBe(19.5);
+    expect(decayed.crimsonFurnace?.pressure).toBe(0);
 
     const cascaded = advanceGongfaRuntime(decayed, {
-      kind: "skill2",
-      skill2Id: "furnace-cascade",
-      eligibleTargetCount: 1
+      kind: "tick", deltaMs: 16, nearbyEnemyCount: 5,
+      targets: [0, 1, 2, 3, 4].map((index) => ({
+        targetId: 20 + index, x: index * 40, y: 0, healthRatio: 1,
+        rank: "ordinary" as const, embedStacks: 1, embedPower: 10
+      }))
     });
     expect(cascaded.runtime.crimsonFurnace?.furnaceCascadeCasts).toBe(5);
-    expect(cascaded.commands).toEqual([
-      {
-        kind: "furnace-cascade",
-        sourceDamage: {
-          embedPowerMultiplier: 1,
-          stackDamage: 3
-        },
-        fragment: {
-          radius: 220,
-          maxTargets: 2,
-          delayMs: 100,
-          delayStepMs: 60,
-          damage: 6,
-          speed: 530,
-          lifetimeMs: 780
-        },
-        masteryCast: {
-          skill2Id: "furnace-cascade",
-          cooldownMs: 2600
-        }
-      }
-    ]);
+    expect(cascaded.commands[0]).toMatchObject({
+      kind: "authored-crimson-network",
+      ignition: { targetIds: expect.arrayContaining([20, 21, 22, 23, 24]), fragmentCount: 5 },
+      masteryCast: { skill2Id: "furnace-cascade", cooldownMs: 2600 }
+    });
   });
 
   it("Heaven-Splitting Line compresses Jinfeng Cutting Front into a piercing lane", () => {
@@ -2153,63 +2112,146 @@ describe("Gongfa runtime", () => {
       .toMatchObject({ shardsPerAngle: 3, range: 560 });
   });
 
-  it("applies Crimson Furnace rank-3 and rank-6 structural Transformations", () => {
+  it("applies Crimson Furnace structural Transformations without generic pierce or radius bonuses", () => {
     const ring = createGongfaRuntime({ gongfaId: "crimson-furnace-sword-art" });
 
-    const piercing = applyGongfaImprovement(ring, "crimson-piercing-needles").runtime;
-    expect(piercing.combat.pierce).toBe(ring.combat.pierce + 2);
+    const piercing = applyGongfaImprovement(ring, "piercing-furnace-needle").runtime;
+    expect(piercing.combat.pierce).toBe(ring.combat.pierce);
     expect(piercing.combat.count).toBe(Math.max(1, ring.combat.count - 1));
+    expect(piercing.combat.damage).toBeGreaterThan(ring.combat.damage);
 
-    expect(applyGongfaImprovement(ring, "scattered-needles").runtime.combat.count).toBe(
+    expect(applyGongfaImprovement(ring, "scattered-furnace-needles").runtime.combat.count).toBe(
       ring.combat.count + 2
     );
-    expect(
-      applyGongfaImprovement(ring, "volatile-embeds").runtime.crimsonFurnace!.embedThreshold
-    ).toBe(ring.crimsonFurnace!.embedThreshold - 1);
-    expect(
-      applyGongfaImprovement(ring, "sustained-crucible").runtime.crimsonFurnace!.pressureDecayRate
-    ).toBeLessThan(ring.crimsonFurnace!.pressureDecayRate);
-    expect(
-      applyGongfaImprovement(ring, "resonant-crucible").runtime.crimsonFurnace!.pressureBuildRate
-    ).toBeGreaterThan(ring.crimsonFurnace!.pressureBuildRate);
-    expect(
-      applyGongfaImprovement(ring, "overpressure-detonation").runtime.crimsonFurnace!
-        .pressureRadiusScale
-    ).toBeGreaterThan(ring.crimsonFurnace!.pressureRadiusScale);
+    expect(applyGongfaImprovement(ring, "volatile-furnace-core").runtime.combat.cooldownMs)
+      .toBeLessThan(ring.combat.cooldownMs);
+    for (const id of ["sealed-leftover-needle", "star-furnace-resonance", "compressed-furnace",
+      "furnace-heart-reforge", "myriad-edges-return", "falling-star-forge"]) {
+      expect(applyGongfaImprovement(ring, id).runtime).not.toBe(ring);
+    }
   });
 
-  it("Furnace Heart and Relentless Needles scale volleys with Pressure", () => {
-    const pressured = createGongfaRuntime({
+  it("migrates legacy Crimson milestone identifiers in existing checkpoints", () => {
+    const restored = createGongfaRuntime({
       gongfaId: "crimson-furnace-sword-art",
-      crimsonFurnace: { pressure: 80 }
+      mastery: {
+        masteryLearnedIds: ["crimson-piercing-needles", "resonant-crucible", "crucible-nova"],
+        upgradeSelectionIds: ["crimson-piercing-needles", "resonant-crucible", "crucible-nova"]
+      }
     });
-
-    const [heart] = planGongfaAttack(pressured, 0, { learnedMasteryIds: ["furnace-heart"] });
-    const [plain] = planGongfaAttack(pressured, 0);
-    const heartCount = heart.kind === "crimson-furnace-volley" ? heart.count : 0;
-    const plainCount = plain.kind === "crimson-furnace-volley" ? plain.count : 0;
-    expect(heartCount).toBeGreaterThan(plainCount);
-
-    expect(
-      planGongfaAttack(pressured, 0, { learnedMasteryIds: ["relentless-needles"] })
-    ).toHaveLength(2);
-    expect(planGongfaAttack(pressured, 0)).toHaveLength(1);
+    expect(restored.mastery.masteryLearnedIds).toEqual([
+      "piercing-furnace-needle", "star-furnace-resonance", "falling-star-forge"
+    ]);
+    expect(restored.mastery.upgradeSelectionIds).toEqual(restored.mastery.masteryLearnedIds);
   });
 
-  it("Crucible Nova erupts and resets at full Pressure", () => {
-    const full = createGongfaRuntime({
-      gongfaId: "crimson-furnace-sword-art",
-      crimsonFurnace: { pressure: 100 }
+  it("uses distinct R9 fragment laws and permits only one reforged follow-up", () => {
+    const targets = [0, 1, 2, 3].map((index) => ({
+      targetId: index + 1, x: index * 40, y: 0, healthRatio: 1,
+      rank: "ordinary" as const, embedStacks: 1, embedPower: 10
+    }));
+    for (const [id, law] of [["furnace-heart-reforge", "reforge"], ["myriad-edges-return", "return"], ["falling-star-forge", "falling-star"]] as const) {
+      const runtime = createGongfaRuntime({ gongfaId: "crimson-furnace-sword-art" });
+      runtime.mastery.masteryLearnedIds = [id];
+      const ignited = advanceGongfaRuntime(runtime, { kind: "tick", deltaMs: 16, nearbyEnemyCount: 4, targets });
+      expect(ignited.commands[0]).toMatchObject({
+        kind: "authored-crimson-network",
+        ignition: { fragmentLaw: law, fragmentCount: 4, followUp: false }
+      });
+      const cooled = advanceGongfaRuntime(ignited.runtime, { kind: "tick", deltaMs: 800, nearbyEnemyCount: 4, targets });
+      expect(cooled.commands[0]).toMatchObject({
+        kind: "authored-crimson-network",
+        ignition: { fragmentCount: 0, followUp: true }
+      });
+    }
+  });
+
+  it("gives every Crimson R3 branch a different network threshold and body distribution", () => {
+    const make = (learnedMasteryIds: string[], targets: Array<{
+      targetId: number; x: number; y: number; healthRatio: number; rank: "ordinary" | "elite"; embedStacks: number; embedPower: number;
+    }>) => {
+      const runtime = createGongfaRuntime({ gongfaId: "crimson-furnace-sword-art" });
+      runtime.mastery.masteryLearnedIds = learnedMasteryIds;
+      return advanceGongfaRuntime(runtime, { kind: "tick", deltaMs: 16, nearbyEnemyCount: targets.length, targets });
+    };
+    const piercing = make(["piercing-furnace-needle"], [
+      { targetId: 1, x: 0, y: 0, healthRatio: 1, rank: "elite", embedStacks: 3, embedPower: 30 },
+      { targetId: 2, x: 90, y: 0, healthRatio: 1, rank: "ordinary", embedStacks: 1, embedPower: 10 }
+    ]);
+    expect(piercing.commands[0]).toMatchObject({
+      kind: "authored-crimson-network",
+      nodes: expect.arrayContaining([expect.objectContaining({ targetId: 1, nodeCount: 3 })]),
+      ignition: expect.objectContaining({ fragmentCount: 4 })
     });
-    const nova = advanceGongfaRuntime(full, {
-      kind: "tick",
-      deltaMs: 16,
-      nearbyEnemyCount: 0,
-      isMoving: false,
-      learnedMasteryIds: ["crucible-nova"]
+
+    const scatteredTargets = [0, 1, 2, 3, 4, 5].map((index) => ({
+      targetId: 10 + index, x: index * 90, y: 0, healthRatio: 1,
+      rank: "ordinary" as const, embedStacks: 1, embedPower: 8
+    }));
+    const scattered = make(["scattered-furnace-needles"], scatteredTargets);
+    expect(scattered.commands[0]).toMatchObject({
+      kind: "authored-crimson-network", ignition: expect.objectContaining({ fragmentCount: 6 })
     });
-    expect(nova.commands.some((command) => command.kind === "aura-burst")).toBe(true);
-    expect(nova.runtime.crimsonFurnace!.pressure).toBeLessThan(100);
+
+    const volatile = make(["volatile-furnace-core"], [0, 1, 2].map((index) => ({
+      targetId: 30 + index, x: index * 55, y: 0, healthRatio: 1,
+      rank: "ordinary" as const, embedStacks: 1, embedPower: 8
+    })));
+    expect(volatile.commands[0]).toMatchObject({
+      kind: "authored-crimson-network", ignition: expect.objectContaining({ fragmentCount: 3 })
+    });
+  });
+
+  it("gives every Crimson R6 branch a distinct death, loop, or compression law", () => {
+    const leftover = createGongfaRuntime({ gongfaId: "crimson-furnace-sword-art" });
+    leftover.mastery.masteryLearnedIds = ["sealed-leftover-needle"];
+    const dead = advanceGongfaRuntime(leftover, {
+      kind: "enemy-death", targetId: 9, x: 40, y: 0, rank: "ordinary",
+      velocityX: 0, velocityY: 0, playerX: 0, playerY: 0, embedStacks: 2, embedPower: 20
+    });
+    expect(dead.runtime.authored.anchors).toContainEqual(expect.objectContaining({
+      kind: "furnace-node", x: 40, remainingMs: 4200
+    }));
+
+    const square = [
+      { targetId: 1, x: 0, y: 0 }, { targetId: 2, x: 100, y: 0 },
+      { targetId: 3, x: 100, y: 100 }, { targetId: 4, x: 0, y: 100 }
+    ].map((target) => ({ ...target, healthRatio: 1, rank: "ordinary" as const, embedStacks: 1, embedPower: 8 }));
+    const base = createGongfaRuntime({ gongfaId: "crimson-furnace-sword-art" });
+    base.crimsonFurnace!.networkIgnitionCooldownRemaining = 1000;
+    const baseGraph = advanceGongfaRuntime(base, { kind: "tick", deltaMs: 16, nearbyEnemyCount: 4, targets: square });
+    const star = createGongfaRuntime({ gongfaId: "crimson-furnace-sword-art" });
+    star.mastery.masteryLearnedIds = ["star-furnace-resonance"];
+    star.crimsonFurnace!.networkIgnitionCooldownRemaining = 1000;
+    const starGraph = advanceGongfaRuntime(star, { kind: "tick", deltaMs: 16, nearbyEnemyCount: 4, targets: square });
+    const baseLinks = baseGraph.commands[0]?.kind === "authored-crimson-network" ? baseGraph.commands[0].links.length : 0;
+    const starLinks = starGraph.commands[0]?.kind === "authored-crimson-network" ? starGraph.commands[0].links.length : 0;
+    expect(starLinks).toBeGreaterThan(baseLinks);
+
+    const spread = square.map((target, index) => ({ ...target, x: index * 150, y: 0 }));
+    const compressed = createGongfaRuntime({ gongfaId: "crimson-furnace-sword-art" });
+    compressed.mastery.masteryLearnedIds = ["compressed-furnace"];
+    const compressedGraph = advanceGongfaRuntime(compressed, { kind: "tick", deltaMs: 16, nearbyEnemyCount: 4, targets: spread });
+    expect(compressedGraph.runtime.crimsonFurnace?.pressure).toBe(0);
+  });
+
+  it("Furnace Cascade marks one core per connected furnace and consumes every connected network", () => {
+    const runtime = createGongfaRuntime({ gongfaId: "crimson-furnace-sword-art" });
+    runtime.mastery.masterySkill2Id = "furnace-cascade";
+    const targets = [0, 45, 90, 500, 545, 590].map((x, index) => ({
+      targetId: 70 + index, x, y: 0, healthRatio: 1,
+      rank: "ordinary" as const, embedStacks: 1, embedPower: 10
+    }));
+    const result = advanceGongfaRuntime(runtime, {
+      kind: "tick", deltaMs: 16, nearbyEnemyCount: 6, targets
+    });
+    const command = result.commands[0];
+    expect(command).toMatchObject({
+      kind: "authored-crimson-network",
+      ignition: { targetIds: expect.arrayContaining([70, 71, 72, 73, 74, 75]) }
+    });
+    if (command?.kind !== "authored-crimson-network") throw new Error("missing Crimson network");
+    expect(command.nodes.filter((node) => node.core)).toHaveLength(2);
   });
 
   it("Unbroken Sword Intent builds on hits, boosts combat, and fades over time", () => {

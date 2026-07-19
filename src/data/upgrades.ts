@@ -106,8 +106,8 @@ const baselineUpgradeConfigs: BaselineUpgradeSeed[] = [
   },
   {
     id: "deep-embedding",
-    name: "Deep Embedding",
-    lore: "Needles detonate at fewer embeds.",
+    name: "Core Etching",
+    lore: "A connected furnace may ignite with one fewer live node, never below three.",
     effect: "embedThreshold",
     value: -1,
     requiredGongfaIds: ["crimson-furnace-sword-art"],
@@ -115,8 +115,8 @@ const baselineUpgradeConfigs: BaselineUpgradeSeed[] = [
   },
   {
     id: "furnace-expansion",
-    name: "Furnace Expansion",
-    lore: "+18 explosion radius.",
+    name: "Long Bellows",
+    lore: "Extends the valid distance of visible furnace links without enlarging explosions.",
     effect: "gongfaRangeSynergy",
     value: 18,
     requiredGongfaIds: ["crimson-furnace-sword-art"],
@@ -124,8 +124,8 @@ const baselineUpgradeConfigs: BaselineUpgradeSeed[] = [
   },
   {
     id: "rising-pressure",
-    name: "Rising Pressure",
-    lore: "Pressure builds faster from explosions.",
+    name: "Topology Tempering",
+    lore: "Each simultaneous node, link, branch, and loop contributes more live Pressure.",
     effect: "pressureBuild",
     value: 0.18,
     requiredGongfaIds: ["crimson-furnace-sword-art"],
@@ -133,8 +133,8 @@ const baselineUpgradeConfigs: BaselineUpgradeSeed[] = [
   },
   {
     id: "sealed-crucible",
-    name: "Sealed Crucible",
-    lore: "Pressure decays slower and strengthens explosive radius.",
+    name: "Sealed Conduits",
+    lore: "Visible furnace links tolerate slightly more separation; Pressure remains topology-bound.",
     effect: "pressureDecay",
     value: 0.84,
     requiredGongfaIds: ["crimson-furnace-sword-art"],

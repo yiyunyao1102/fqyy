@@ -560,26 +560,26 @@ Wood is playable through the `Water-Wood` dual-root profile.
 
 - `Crimson Furnace Sword Art`
   - required roots: `fire + metal`
-  - Skill 1: `Furnace Needles`; launch focused blades that lodge in enemies and detonate at an embed threshold
+  - Skill 1: `Furnace Needles`; lodge visible furnace nodes across living enemies
   - Skill tags: `projectile`, `explosive`, `fire`, `metal`
-  - targeting: prioritize enemies with existing embeds until primed, then acquire a new nearby target
-  - fallback: remaining blades detonate after a short timeout
+  - targeting: prioritize fresh threats and bodies that extend a valid visible connection; elites and bosses hold several nodes
+  - fallback: isolated needles expire without a substitute explosion
   - defining passive: `Crucible Pressure`
-    - explosions build Pressure
-    - Pressure globally increases radius for all `explosive` Skills
-    - Pressure decays without explosions
-  - upgrade hooks: lower threshold, higher embed cap, wider or propagating explosions
-  - Mastery development: coordinated multi-blade volleys; remaining blades retarget immediately once the current target is primed
-  - rank-10 Skill 2: `Furnace Cascade`; independently detonate all current embeds and scatter heated fragments into nearby enemies to begin chain reactions
+    - simultaneous live nodes, links, branches, and loops determine Pressure
+    - death, expiry, or excessive separation removes Pressure immediately
+    - Pressure changes propagation topology and never grants global explosion radius
+  - upgrade hooks: lower connected-node threshold, stronger topology weight, and longer valid conduits
+  - Mastery development: different body capacities, graph shapes, death-site connectors, and fragment destinations
+  - rank-10 Skill 2: `Furnace Cascade`; ignite every connected furnace, reforge consumed needles, and allow exactly one follow-up chain
   - pre-rank-10 Mastery pool:
     - `Tempered Needles`: more Skill 1 blade damage
     - `Rapid Forging`: faster needle volleys
-    - `Deep Embedding`: lower detonation threshold
-    - `Furnace Expansion`: larger Skill 1 explosions
-    - `Rising Pressure`: Pressure builds faster
-    - `Sealed Crucible`: Pressure decays slower and gives a stronger global `explosive` radius bonus
+    - `Core Etching`: lower connected-node ignition threshold
+    - `Long Bellows`: extend visible furnace conduits
+    - `Topology Tempering`: increase live topology contribution
+    - `Sealed Conduits`: let links tolerate slightly more separation
   - identity constraint: must not feel like `Yujian Jue` with added fire damage
-  - status: first hybrid design target
+  - status: implemented authored package with living-node network motif
 
 ## Compatibility Tree
 
