@@ -105,6 +105,42 @@ describe("approved Gongfa mechanic contracts", () => {
     expect(triggered.runtime.authored.charges).toBe(0);
   });
 
+  it("spends the entire stored-soul procession on its selected capstone route", () => {
+    const runtime = createGongfaRuntime({ gongfaId: "mist-wraith-canon" });
+    runtime.authored.anchors.push(
+      { kind: "stored-soul", x: 10, y: 0, value: 1 },
+      { kind: "stored-soul", x: 20, y: 0, value: 2 }
+    );
+    runtime.authored.charges = 2;
+    const result = advanceGongfaRuntime(runtime, {
+      kind: "skill2", skill2Id: "hundred-ghost-procession", eligibleTargetCount: 4,
+      nearbyEnemyCount: 4, hasMovementDirection: true,
+      learnedMasteryIds: ["nether-river-funeral"]
+    });
+    expect(result.commands).toHaveLength(2);
+    expect(result.commands[0]).toMatchObject({
+      kind: "authored-line-strike", slowMultiplier: 0.45, slowDurationMs: 2200
+    });
+    expect(result.runtime.authored.anchors).toHaveLength(0);
+    expect(result.runtime.authored.charges).toBe(0);
+  });
+
+  it("makes Flame-Demon health bands and rank-3 routes mechanically distinct", () => {
+    const runtime = createGongfaRuntime({ gongfaId: "flame-demon-body-art" });
+    runtime.authored.secondaryResource = 0.35;
+    const focused = planGongfaAttack(runtime, 0, {
+      learnedMasteryIds: ["one-horn-army-breaker", "meridian-locking-heart-guard"]
+    })[0];
+    expect(focused).toMatchObject({
+      kind: "authored-blood-combination", strikeCount: 4, shape: "focused",
+      healthCostFractions: [0, 0.03, 0.04, 0.05]
+    });
+    const pursuit = planGongfaAttack(runtime, 0, {
+      learnedMasteryIds: ["hungry-ghost-soul-pursuit"]
+    })[0];
+    expect(pursuit).toMatchObject({ kind: "authored-blood-combination", shape: "pursuit" });
+  });
+
   it("persists authored inventories while resetting transient movement continuity", () => {
     let collection = learnGongfa(createGongfaCollectionRuntime(), "sword-burial-formation", true);
     const runtime = collection.byId["sword-burial-formation"]!;

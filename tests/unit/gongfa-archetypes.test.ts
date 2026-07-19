@@ -10,14 +10,14 @@ import { authoredGongfaMechanics } from "../../src/data/authoredGongfaMechanics"
 
 const archetypes = [
   ["nine-sun-calamity-seal", "ritual-impact", "heavenly-sun-descent", "heavenly-sun-descent"],
-  ["mist-wraith-canon", "authored-line-strike", "hundred-ghost-procession", "hundred-ghost-procession"],
+  ["mist-wraith-canon", "authored-line-strike", "hundred-ghost-procession", "authored-line-strike"],
   ["heavenfall-body-art", "melee-combination", "star-breaking-descent", "star-breaking-descent"],
   ["thousand-root-formation", "root-trap-array", "myriad-root-killing-field", "myriad-root-killing-field"],
-  ["flame-demon-body-art", "melee-combination", "asura-conflagration", "star-breaking-descent"],
+  ["flame-demon-body-art", "authored-blood-combination", "asura-conflagration", "star-breaking-descent"],
   ["vermilion-bird-covenant", "summon-wraiths", "vermilion-host-descent", "hundred-ghost-procession"],
   ["frozen-river-formation", "root-trap-array", "frozen-river-prison", "myriad-root-killing-field"],
   ["moonfall-tide-ritual", "ritual-impact", "moonfall-cataclysm", "heavenly-sun-descent"],
-  ["sword-burial-formation", "authored-line-strike", "ten-thousand-sword-tomb", "myriad-root-killing-field"],
+  ["sword-burial-formation", "authored-line-strike", "ten-thousand-sword-tomb", "authored-line-strike"],
   ["heaven-sundering-edict", "ritual-impact", "supreme-sundering-decree", "heavenly-sun-descent"],
   ["myriad-beast-grove", "summon-wraiths", "myriad-beast-stampede", "hundred-ghost-procession"],
   ["ancient-tree-body-art", "melee-combination", "world-tree-incarnation", "star-breaking-descent"]
@@ -50,6 +50,12 @@ describe("expanded Gongfa archetypes", () => {
   it("uses four distinct Skill 1 command families rather than the old projectile template", () => {
     const kinds = archetypes.slice(0, 4).map(([gongfaId, expectedKind]) => {
       const runtime = createGongfaRuntime({ gongfaId });
+      if (gongfaId === "mist-wraith-canon") {
+        runtime.authored.anchors.push({ kind: "stored-soul", x: 0, y: 0, value: 1 });
+      }
+      if (gongfaId === "sword-burial-formation") {
+        runtime.authored.anchors.push({ kind: "grave-sword", x: 0, y: 0, value: 1, angle: 0 });
+      }
       const command = planGongfaAttack(runtime, 0)[0];
       expect(command?.kind).toBe(expectedKind);
       return command?.kind;
@@ -60,6 +66,12 @@ describe("expanded Gongfa archetypes", () => {
   it("authors a matching automatic Skill 2 for every new playstyle", () => {
     for (const [gongfaId, , expectedSkill2, expectedCommand] of archetypes) {
       const runtime = createGongfaRuntime({ gongfaId });
+      if (gongfaId === "mist-wraith-canon") {
+        runtime.authored.anchors.push({ kind: "stored-soul", x: 0, y: 0, value: 1 });
+      }
+      if (gongfaId === "sword-burial-formation") {
+        runtime.authored.anchors.push({ kind: "grave-sword", x: 0, y: 0, value: 1, angle: 0 });
+      }
       expect(getRank10Skill2Id(gongfaId)).toBe(expectedSkill2);
       const result = advanceGongfaRuntime(runtime, {
         kind: "skill2",
@@ -96,6 +108,9 @@ describe("expanded Gongfa archetypes", () => {
       }
       if (command.kind === "melee-combination") {
         return command.damage * ((command.strikeCount - 1) * 0.55 + command.finisherScale) / cadence;
+      }
+      if (command.kind === "authored-blood-combination") {
+        return command.damage * command.strikeCount / cadence;
       }
       if (command.kind === "root-trap-array") {
         return [command.damage * command.count * command.pulses / cadence];

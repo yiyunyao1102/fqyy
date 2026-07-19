@@ -558,6 +558,9 @@ describe("mastery progression", () => {
 
   it("offers the Surge Transformation milestones for every lighter gongfa", () => {
     for (const spec of surgeGongfaSpecs) {
+      if (["mist-wraith-canon", "sword-burial-formation", "flame-demon-body-art"].includes(spec.gongfaId)) {
+        continue;
+      }
       expect(
         getDeterministicMasteryChoiceIds({ gongfaId: spec.gongfaId, rank: 3, seed: "s", learnedIds: [] })
       ).toEqual([spec.focus.id, spec.spread.id, spec.quicken.id]);
@@ -577,6 +580,24 @@ describe("mastery progression", () => {
         })
       ).toEqual([]);
     }
+  });
+
+  it("offers the approved transformations for the corpse and blood Gongfa", () => {
+    expect(getDeterministicMasteryChoiceIds({
+      gongfaId: "mist-wraith-canon", rank: 3, seed: "s", learnedIds: []
+    })).toEqual([
+      "life-seeking-fierce-wraith", "wandering-mist-host", "lantern-returning-underworld-attendant"
+    ]);
+    expect(getDeterministicMasteryChoiceIds({
+      gongfaId: "sword-burial-formation", rank: 6, seed: "s", learnedIds: []
+    })).toEqual([
+      "rise-at-living-presence", "recognize-calamity-leave-sheath", "seal-grave-treading-stars"
+    ]);
+    expect(getDeterministicMasteryChoiceIds({
+      gongfaId: "flame-demon-body-art", rank: 9, seed: "s", learnedIds: []
+    })).toEqual([
+      "undying-asura", "world-burning-asura", "life-hunting-asura"
+    ]);
   });
 
   it("keeps post-rank-10 Refinements Gongfa-specific after Skill 2 unlocks automatically", () => {

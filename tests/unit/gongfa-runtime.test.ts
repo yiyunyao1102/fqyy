@@ -504,6 +504,12 @@ describe("Gongfa runtime", () => {
       expect(plan, `${gongfaId} declares unsupported Skill 2 ${skill2Id}`).toBeDefined();
 
       const runtime = createGongfaRuntime({ gongfaId });
+      if (gongfaId === "mist-wraith-canon") {
+        runtime.authored.anchors.push({ kind: "stored-soul", x: 0, y: 0, value: 1 });
+      }
+      if (gongfaId === "sword-burial-formation") {
+        runtime.authored.anchors.push({ kind: "grave-sword", x: 0, y: 0, value: 1, angle: 0 });
+      }
       const result =
         plan?.trigger === "cycle"
           ? advanceGongfaRuntime(runtime, {

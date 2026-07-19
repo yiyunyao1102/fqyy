@@ -2310,6 +2310,11 @@ export class GameScene extends Phaser.Scene {
         return;
       }
 
+      if (command.kind === "authored-blood-combination") {
+        this.fireAuthoredBloodCombination(command);
+        return;
+      }
+
       if (command.kind === "heavenly-sun-descent") {
         this.fireRitualImpact({
           kind: "ritual-impact", count: command.impactCount, damage: command.damage,
@@ -2466,9 +2471,9 @@ export class GameScene extends Phaser.Scene {
       ? active.reduce<Enemy | undefined>((best, enemy) =>
           !best || enemy.maxHealth > best.maxHealth ? enemy : best, undefined)
       : this.getNearestEnemies(1)[0];
-    const angle = command.angle ?? (aimedTarget
+    const angle = (command.angle ?? (aimedTarget
       ? Phaser.Math.Angle.Between(originX, originY, aimedTarget.x, aimedTarget.y)
-      : this.lastAimAngle);
+      : this.lastAimAngle)) + (command.angleOffset ?? 0);
     const endX = originX + Math.cos(angle) * command.length;
     const endY = originY + Math.sin(angle) * command.length;
     const identity = getGongfaVisualIdentity(command.sourceGongfaId);
@@ -2534,6 +2539,9 @@ export class GameScene extends Phaser.Scene {
       const closestX = originX + lineX * projection;
       const closestY = originY + lineY * projection;
       if (Phaser.Math.Distance.Between(closestX, closestY, enemy.x, enemy.y) > halfWidth + 12) continue;
+      if (command.slowMultiplier !== undefined && command.slowDurationMs !== undefined) {
+        enemy.applySlow(command.slowMultiplier, command.slowDurationMs);
+      }
       if (enemy.receiveDamage(command.damage)) this.resolveEnemyDeath(enemy);
     }
 
@@ -2544,6 +2552,69 @@ export class GameScene extends Phaser.Scene {
       duration: command.style === "mist-wraith-crossing" ? 360 : 220,
       onComplete: () => visual.destroy()
     });
+  }
+
+  private fireAuthoredBloodCombination(
+    command: Extract<GongfaRuntimeCommand, { kind: "authored-blood-combination" }>
+  ): void {
+    const identity = getGongfaVisualIdentity(command.sourceGongfaId);
+    for (let strike = 0; strike < command.strikeCount; strike += 1) {
+      this.time.delayedCall(strike * command.staggerMs, () => {
+        if (!this.player.active) return;
+        const costFraction = command.healthCostFractions[strike] ?? 0;
+        if (costFraction > 0) {
+          const healthCost = this.player.stats.health * costFraction;
+          this.player.stats.health = Math.max(1, this.player.stats.health - healthCost);
+          this.spawnDamageNumber(this.player.x, this.player.y - 26, healthCost);
+        }
+
+        const finisher = strike === command.strikeCount - 1;
+        const strikeDamage = command.damage * (finisher ? 1.45 : 0.62);
+        const radius = command.radius * (finisher ? 1.18 : 0.86);
+        if (command.shape === "focused") {
+          this.fireAuthoredLineStrike({
+            kind: "authored-line-strike",
+            style: "grave-sword-rise",
+            origin: "player",
+            aimMode: "strongest",
+            damage: strikeDamage * 1.16,
+            width: Math.max(12, radius * 0.42),
+            length: radius * 2.5,
+            sourceGongfaId: command.sourceGongfaId
+          });
+        } else {
+          if (command.shape === "pursuit") {
+            const target = (this.enemies.getChildren() as Enemy[])
+              .filter((enemy) => enemy.active)
+              .sort((a, b) => a.health - b.health)[0];
+            if (target) {
+              const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
+              const distance = Math.min(18, Phaser.Math.Distance.Between(this.player.x, this.player.y, target.x, target.y));
+              this.player.setPosition(
+                this.player.x + Math.cos(angle) * distance,
+                this.player.y + Math.sin(angle) * distance
+              );
+            }
+          }
+          const armCount = command.shape === "radial" ? 6 : 3;
+          const arcs = this.applyGongfaEffectVisualHierarchy(
+            this.add.graphics(),
+            command.sourceGongfaId
+          ).setDepth(12);
+          arcs.lineStyle(finisher ? 5 : 3, finisher ? identity.secondary : identity.accent, 0.86);
+          for (let arm = 0; arm < armCount; arm += 1) {
+            const angle = (Math.PI * 2 * arm) / armCount + strike * 0.32;
+            arcs.beginPath();
+            arcs.arc(this.player.x, this.player.y, radius, angle - 0.34, angle + 0.34);
+            arcs.strokePath();
+          }
+          this.tweens.add({ targets: arcs, alpha: 0, scale: 1.08, duration: 200, onComplete: () => arcs.destroy() });
+          this.damageEnemiesWithin(this.player.x, this.player.y, radius, strikeDamage, command.sourceGongfaId);
+        }
+        this.recordGongfaMotif(`${identity.motifId}:blood-combination:${command.shape}`);
+        this.publishHud(this.lastMessage);
+      });
+    }
   }
 
   private fireFeatherRainFormation(

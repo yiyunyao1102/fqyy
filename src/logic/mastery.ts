@@ -40,6 +40,18 @@ type TransformationImpact = Required<
 >;
 
 function getTransformationImpact(definition: MasteryChoiceDefinition): TransformationImpact {
+  if (
+    definition.playstyle && definition.gain && definition.cost &&
+    definition.scope && definition.treasureInteraction
+  ) {
+    return {
+      playstyle: definition.playstyle,
+      gain: definition.gain,
+      cost: definition.cost,
+      scope: definition.scope,
+      treasureInteraction: definition.treasureInteraction
+    };
+  }
   const siblings = masteryTransformationConfigs.filter(
     (candidate) => candidate.exclusivityGroup === definition.exclusivityGroup
   );
@@ -157,6 +169,7 @@ function getTransformationImpact(definition: MasteryChoiceDefinition): Transform
 function buildSurgeTransformations(): MasteryChoiceDefinition[] {
   const result: MasteryChoiceDefinition[] = [];
   for (const spec of surgeGongfaSpecs) {
+    if (approvedRuntimeTransformationGongfaIds.has(spec.gongfaId)) continue;
     const entry = (item: SurgeTransformation, rank: number): MasteryChoiceDefinition => ({
       id: item.id,
       name: item.name,
@@ -171,6 +184,98 @@ function buildSurgeTransformations(): MasteryChoiceDefinition[] {
     result.push(entry(spec.crown, 9), entry(spec.domain, 9), entry(spec.updraft, 9));
   }
   return result;
+}
+
+type ApprovedTransformationSeed = readonly [
+  id: string,
+  name: string,
+  gain: string,
+  cost: string,
+  scope: string
+];
+
+const approvedRuntimeTransformationGongfaIds = new Set<GongfaId>([
+  "mist-wraith-canon",
+  "sword-burial-formation",
+  "flame-demon-body-art"
+]);
+
+const approvedRuntimeTransformationSeeds: Partial<Record<
+  GongfaId,
+  Record<3 | 6 | 9, readonly ApprovedTransformationSeed[]>
+>> = {
+  "mist-wraith-canon": {
+    3: [
+      ["life-seeking-fierce-wraith", "Life-Seeking Fierce Wraith", "Oldest soul immediately makes a powerful strongest-target crossing.", "Procession capacity is limited to five and souls are spent rapidly.", "Mist-wraith behavior and procession capacity"],
+      ["wandering-mist-host", "Wandering-Mist Host", "Each soul curves through up to three distinct ordinary enemies.", "Each crossing deals less damage and may hit a boss only once.", "Mist-wraith crossing shape and target limits"],
+      ["lantern-returning-underworld-attendant", "Lantern-Returning Underworld Attendant", "Souls live longer and the procession holds more.", "Stored souls make no independent attack before Skill 2.", "Soul storage and Skill 1 replacement"]
+    ],
+    6: [
+      ["long-banner-soul-call", "Long-Banner Soul Call", "Automatically collect corpse souls in a much wider radius.", "Lose two procession slots and 20% wraith damage.", "Corpse-soul collection radius and inventory"],
+      ["tread-corpse-guide-soul", "Tread the Corpse, Guide the Soul", "Close collection creates longer-lived, 35% stronger souls.", "Collection radius becomes very small.", "Close corpse routing and collected-soul strength"],
+      ["halt-lantern-keep-vigil", "Halt the Lantern, Keep the Vigil", "Standing by a corpse upgrades one ordinary soul without duplication.", "Moving before the vigil completes loses the upgrade attempt while expiry continues.", "Stationary corpse vigil"]
+    ],
+    9: [
+      ["hundred-ghosts-cross-river", "Hundred Ghosts Cross the River", "Skill 2 spreads parallel crossings across the arena.", "Repeat hits on one target are limited.", "Hundred-Ghost Night Crossing"],
+      ["myriad-souls-ask-for-life", "Myriad Souls Ask for Life", "Every Skill 2 crossing converges on the strongest enemy.", "Almost no crowd clearing; paths never retarget after death.", "Hundred-Ghost Night Crossing"],
+      ["nether-river-funeral", "Nether River Funeral", "Crossings leave strongly slowing funeral mist roads.", "Immediate Skill 2 damage is sharply reduced.", "Hundred-Ghost Night Crossing and control wake"]
+    ]
+  },
+  "sword-burial-formation": {
+    3: [
+      ["lone-grave-great-que", "Lone-Grave Great Que", "Isolated graves grow into much stronger, longer great-sword lines.", "Nearby graves prevent the upgrade and clustered kills are weak.", "Grave structure and emergence strength"],
+      ["collective-burial-sword-mound", "Collective-Burial Sword Mound", "Nearby graves form one mound and erupt together.", "Each sword is weaker and one weak trespasser may waste the mound.", "Grave clustering and shared trigger"],
+      ["field-path-sword-forest", "Field-Path Sword Forest", "Burial order forms a visible sequential sword chain.", "Individual swords are weak and a chain may run the wrong way.", "Chronological grave chain"]
+    ],
+    6: [
+      ["rise-at-living-presence", "Rise at Living Presence", "Any enemy triggers graves from a wider radius.", "Weak mobs can waste valuable swords.", "Grave trigger eligibility"],
+      ["recognize-calamity-leave-sheath", "Recognize Calamity, Leave the Sheath", "Only elite and boss trespassers trigger stronger grave swords.", "Ordinary enemies never trigger regular grave damage.", "Elite and boss grave trigger"],
+      ["seal-grave-treading-stars", "Seal the Grave by Treading the Stars", "Evading across up to six graves reserves stronger capstone swords.", "Unsealed regular eruptions deal less damage.", "Evade grave sealing and capstone inventory"]
+    ],
+    9: [
+      ["gravefield-cuts-across", "Gravefield Cuts Across", "Every sword keeps its recorded burial direction for broad clear.", "Bad recorded directions may miss the entire fight.", "Ten-Thousand Sword Tomb flight law"],
+      ["myriad-edges-ask-the-leader", "Myriad Edges Ask the Leader", "Each sword rotates once toward the strongest enemy.", "Almost no crowd clear and no retargeting.", "Ten-Thousand Sword Tomb flight law"],
+      ["old-roads-return-the-soul", "Old Roads Return the Soul", "Each sword retraces toward the player's historical death-position location.", "Clustered kills or static play create poor coverage.", "Ten-Thousand Sword Tomb historical route"]
+    ]
+  },
+  "flame-demon-body-art": {
+    3: [
+      ["one-horn-army-breaker", "One-Horn Army Breaker", "All blows focus the strongest close enemy with high armor breaking.", "Attack width is halved and side enemies are ignored.", "Furnace-Blood Combination target shape"],
+      ["six-armed-yaksha", "Six-Armed Yaksha", "Every step strikes several directions for maximum crowd coverage.", "Total force is split and single-target damage is weak.", "Furnace-Blood Combination target shape"],
+      ["hungry-ghost-soul-pursuit", "Hungry-Ghost Soul Pursuit", "Each step automatically advances toward a nearby weakened target.", "The automatic pursuit may carry the Cultivator into danger and cannot hold boss focus.", "Furnace-Blood Combination movement and targeting"]
+    ],
+    6: [
+      ["meridian-locking-heart-guard", "Meridian-Locking Heart Guard", "Every health cost is halved.", "Missing-health form bonuses are also halved.", "Furnace-Blood health economy"],
+      ["blood-debt-repaid-at-the-end", "Blood Debt Repaid at the End", "A landed full finisher refunds up to 70% of that combination's burn.", "Cancel, miss, or early target death returns nothing.", "Furnace-Blood completion refund"],
+      ["life-flame-without-return", "Life-Flame Without Return", "Costs and missing-health power rise by 50%.", "All Gongfa life leech is disabled.", "Furnace-Blood risk and recovery"]
+    ],
+    9: [
+      ["undying-asura", "Undying Asura", "Asura Heart gains the strongest refunds and sustain.", "Recoverable health locks at 30% and damage is lower.", "Asura Heart permanent form"],
+      ["world-burning-asura", "World-Burning Asura", "Asura attacks gain maximum area and damage.", "Recoverable health locks at 15% and all leech is removed.", "Asura Heart permanent form"],
+      ["life-hunting-asura", "Life-Hunting Asura", "A killing finisher may continue through up to three ordinary enemies.", "Recoverable health locks at 25%; boss damage is lower and every continuation burns health.", "Asura Heart permanent form and kill chain"]
+    ]
+  }
+};
+
+function buildApprovedRuntimeTransformations(): MasteryChoiceDefinition[] {
+  return Object.entries(approvedRuntimeTransformationSeeds).flatMap(([gongfaId, ranks]) =>
+    ([3, 6, 9] as const).flatMap((rank) =>
+      (ranks?.[rank] ?? []).map(([id, name, gain, cost, scope]) => ({
+        id,
+        name,
+        lore: `${gain} ${cost}`,
+        kind: "transformation" as const,
+        requiredGongfaIds: [gongfaId as GongfaId],
+        milestoneRank: rank,
+        exclusivityGroup: `${gongfaId}:rank-${rank}`,
+        playstyle: name,
+        gain,
+        cost,
+        scope,
+        treasureInteraction: "Spirit Treasure resonances apply after this authored rule"
+      }))
+    )
+  );
 }
 
 export const masteryTransformationConfigs: MasteryChoiceDefinition[] = [
@@ -256,6 +361,7 @@ export const masteryTransformationConfigs: MasteryChoiceDefinition[] = [
     exclusivityGroup: "blazing-feather-art:rank-9"
   },
   ...buildSurgeTransformations(),
+  ...buildApprovedRuntimeTransformations(),
   {
     id: "execution-seal",
     name: "Execution Seal",

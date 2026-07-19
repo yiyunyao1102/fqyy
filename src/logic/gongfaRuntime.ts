@@ -487,6 +487,21 @@ export type GongfaRuntimeCommand =
       width: number;
       length: number;
       sourceGongfaId: GongfaId;
+      angleOffset?: number;
+      slowMultiplier?: number;
+      slowDurationMs?: number;
+      masteryCast?: MasterySkill2Cast;
+    }
+  | {
+      kind: "authored-blood-combination";
+      strikeCount: number;
+      damage: number;
+      radius: number;
+      staggerMs: number;
+      healthCostFractions: number[];
+      shape: "focused" | "radial" | "pursuit";
+      sourceGongfaId: GongfaId;
+      masteryCast?: MasterySkill2Cast;
     };
 
 export interface YujianTransformationTriggers {
@@ -1027,7 +1042,7 @@ export function recordMasterySkill2Cast(
   state: MasterySkill2CastState,
   command: GongfaRuntimeCommand
 ): MasterySkill2CastState {
-  if (!("masteryCast" in command)) {
+  if (!("masteryCast" in command) || !command.masteryCast) {
     return state;
   }
 
@@ -2064,6 +2079,10 @@ function advanceAuthoredWorldFacts(
   if (event.kind !== "tick") return;
 
   state.phaseElapsedMs += event.deltaMs;
+  if (runtime.gongfaId === "flame-demon-body-art") {
+    state.secondaryResource = Math.max(0, Math.min(1, event.healthRatio ?? 1));
+    state.resource = 1 - state.secondaryResource;
+  }
   if (event.isMoving) {
     state.continuousMovementMs += event.deltaMs;
     state.continuousDistance += Math.max(0, event.movementDistance ?? 0);
@@ -2261,6 +2280,73 @@ export function advanceGongfaRuntime(
   if (event.kind === "skill2") {
     const skill2Stats = skill2RefinementStats(next);
     const skill2Base = skill2Combat(next);
+    if (event.skill2Id === "hundred-ghost-procession" && next.gongfaId === "mist-wraith-canon") {
+      const storedSouls = next.authored.anchors.filter((anchor) => anchor.kind === "stored-soul");
+      if (storedSouls.length > 0) {
+        const learnedIds = event.learnedMasteryIds;
+        const converges = learnedIds.includes("myriad-souls-ask-for-life");
+        const funeral = learnedIds.includes("nether-river-funeral");
+        const spread = learnedIds.includes("hundred-ghosts-cross-river") ? 0.11 : 0.045;
+        storedSouls.forEach((soul, index) => {
+          commands.push({
+            kind: "authored-line-strike",
+            style: "mist-wraith-crossing",
+            origin: "player",
+            aimMode: converges ? "strongest" : soul.value >= 3 ? "strongest" : "nearest",
+            angleOffset: converges ? 0 : (index - (storedSouls.length - 1) / 2) * spread,
+            damage: Math.max(1, Math.floor(skill2Base.damage * soul.value * skill2Stats.damageScale * (funeral ? 0.55 : 1))),
+            width: 20 + soul.value * 8 + skill2Stats.coverage * 3,
+            length: Math.max(520, skill2Base.range * 1.65),
+            sourceGongfaId: next.gongfaId,
+            ...(funeral ? { slowMultiplier: 0.45, slowDurationMs: 2200 } : {}),
+            ...(index === 0 ? {
+              masteryCast: {
+                skill2Id: "hundred-ghost-procession" as const,
+                cooldownMs: Math.floor(authoredSkill2Plans["hundred-ghost-procession"].cooldownMs * skill2Stats.cadenceScale)
+              }
+            } : {})
+          });
+        });
+        next.authored.anchors = next.authored.anchors.filter((anchor) => anchor.kind !== "stored-soul");
+        next.authored.charges = 0;
+        next.authored.resource = 0;
+      }
+      return { runtime: next, commands };
+    }
+    if (event.skill2Id === "ten-thousand-sword-tomb" && next.gongfaId === "sword-burial-formation") {
+      const graves = next.authored.anchors.filter((anchor) => anchor.kind === "grave-sword");
+      if (graves.length > 0) {
+        const learnedIds = event.learnedMasteryIds;
+        const asksLeader = learnedIds.includes("myriad-edges-ask-the-leader");
+        const oldRoads = learnedIds.includes("old-roads-return-the-soul");
+        graves.forEach((grave, index) => {
+          const oldRoadAngle = Math.atan2(
+            (grave.originPlayerY ?? grave.y) - grave.y,
+            (grave.originPlayerX ?? grave.x) - grave.x
+          );
+          commands.push({
+            kind: "authored-line-strike",
+            style: "grave-sword-rise",
+            origin: { x: grave.x, y: grave.y },
+            ...(asksLeader ? { aimMode: "strongest" as const } : { angle: oldRoads ? oldRoadAngle : grave.angle ?? 0 }),
+            damage: Math.max(1, Math.floor(skill2Base.damage * grave.value * skill2Stats.damageScale)),
+            width: 18 + skill2Stats.coverage * 3,
+            length: Math.max(520, skill2Base.range * 1.7),
+            sourceGongfaId: next.gongfaId,
+            ...(index === 0 ? {
+              masteryCast: {
+                skill2Id: "ten-thousand-sword-tomb" as const,
+                cooldownMs: Math.floor(authoredSkill2Plans["ten-thousand-sword-tomb"].cooldownMs * skill2Stats.cadenceScale)
+              }
+            } : {})
+          });
+        });
+        next.authored.anchors = next.authored.anchors.filter((anchor) => anchor.kind !== "grave-sword");
+        next.authored.charges = 0;
+        next.authored.resource = 0;
+      }
+      return { runtime: next, commands };
+    }
     if (
       event.skill2Id === "returning-sword-formation" &&
       next.yujian &&
@@ -2969,6 +3055,34 @@ export function planGongfaAttack(
       damage: Math.max(1, Math.floor(runtime.combat.damage * (soul ? soul.value : 0.28))),
       width: soul ? 14 + soul.value * 7 : 8,
       length: Math.max(240, runtime.combat.range + (soul?.value ?? 0) * 55),
+      sourceGongfaId: runtime.gongfaId
+    }];
+  }
+  if (runtime.gongfaId === "flame-demon-body-art") {
+    const healthRatio = runtime.authored.secondaryResource || 1;
+    const strikeCount = healthRatio > 0.7 ? 2 : healthRatio > 0.4 ? 3 : 4;
+    const learnedIds = options.learnedMasteryIds ?? [];
+    const shape = learnedIds.includes("one-horn-army-breaker")
+      ? "focused" as const
+      : learnedIds.includes("hungry-ghost-soul-pursuit")
+        ? "pursuit" as const
+        : "radial" as const;
+    const costScale = learnedIds.includes("meridian-locking-heart-guard")
+      ? 0.5
+      : learnedIds.includes("life-flame-without-return")
+        ? 1.5
+        : 1;
+    const missingHealthScale = 1 + (1 - healthRatio) *
+      (learnedIds.includes("meridian-locking-heart-guard") ? 0.25 : 0.5) *
+      (learnedIds.includes("life-flame-without-return") ? 1.5 : 1);
+    return [{
+      kind: "authored-blood-combination",
+      strikeCount,
+      damage: Math.max(1, Math.floor(runtime.combat.damage * missingHealthScale)),
+      radius: runtime.combat.auraRadius * (shape === "focused" ? 0.62 : shape === "radial" ? 1.08 : 0.82),
+      staggerMs: Math.max(100, runtime.combat.projectileLifetimeMs),
+      healthCostFractions: [0, 0.06 * costScale, 0.08 * costScale, 0.1 * costScale],
+      shape,
       sourceGongfaId: runtime.gongfaId
     }];
   }

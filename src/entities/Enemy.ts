@@ -65,6 +65,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private readonly bossAuraColor: number;
   private movementElapsedMs = 0;
   private movementMode: EnemyMovementMode = "pursue";
+  private movementSlowMultiplier = 1;
+  private movementSlowUntil = 0;
   private deathEffect?: Phaser.GameObjects.Sprite;
 
   constructor(
@@ -132,6 +134,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   chase(target: Phaser.Math.Vector2): void {
     if (!this.active) return;
     const body = this.body as Phaser.Physics.Arcade.Body;
+    if (this.scene.time.now >= this.movementSlowUntil) {
+      this.movementSlowMultiplier = 1;
+    }
     const movement = projectEnemyMovement({
       // Boss challenge comes from slams, adds, enrage, and arena hazards. Keep
       // the large boss body on a readable pursuit line so aimed Gongfa do not
@@ -142,7 +147,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       sourceY: this.y,
       targetX: target.x,
       targetY: target.y,
-      speed: this.chaseSpeed * (this.isEnraged ? 1.22 : 1)
+      speed: this.chaseSpeed * (this.isEnraged ? 1.22 : 1) * this.movementSlowMultiplier
     });
     body.setVelocity(movement.velocityX, movement.velocityY);
     this.movementMode = movement.mode;
@@ -172,6 +177,15 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       }
     });
     return this.health <= 0;
+  }
+
+  applySlow(multiplier: number, durationMs: number): void {
+    if (!this.active || durationMs <= 0) return;
+    this.movementSlowMultiplier = Math.min(
+      this.movementSlowMultiplier,
+      Phaser.Math.Clamp(multiplier, 0.1, 1)
+    );
+    this.movementSlowUntil = Math.max(this.movementSlowUntil, this.scene.time.now + durationMs);
   }
 
   presentDefeat(): boolean {
