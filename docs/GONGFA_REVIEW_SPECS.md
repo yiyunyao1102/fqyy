@@ -31,6 +31,11 @@ implementation, testing, balance review, and future regression checks.
 | Yujian Jue / 御剑诀 | Youxia | Approved | Pending redesign |
 | Jinfeng Gong / 金锋功 | Youxia | Approved | Pending redesign |
 | Green Vine Art / 青藤诀 | Youxia | Approved | Pending redesign |
+| Nine-Sun Calamity Seal / 九阳劫印 | Faxiu | Approved | Pending redesign |
+| Scarlet Wave Manual / 赤浪真诀 | Faxiu | Approved | Pending redesign |
+| Moonfall Tide Ritual / 月坠潮仪 | Faxiu | Approved | Pending redesign |
+| Heaven-Sundering Edict / 断天敕令 | Faxiu | Approved | Pending redesign |
+| Verdant Ring Scripture / 碧环经 | Faxiu | Approved | Pending redesign |
 
 ---
 
@@ -231,3 +236,206 @@ Full contraction breaks the net and consumes all Knots.
 
 **Must not become:** Thousand Root infection, Frozen River crossing curses, generic
 seeking vines, or a stationary pulsing field.
+
+---
+
+## Nine-Sun Calamity Seal / 九阳劫印
+
+**Identity:** an automatic future-position prediction, long fixed telegraph, Zenith
+saved only outside casting, real miss risk, and nine omens condensed into one sun.
+
+### Core
+
+- **Falling Sun Seal / 坠阳劫印:** predicts the future position of the highest-threat
+  or densest group, fixes a visible ground seal there, then lands one center-weighted
+  impact after a long delay. It does not track after commitment or leave generic fire.
+- **Zenith / 阳极:** rises only while no seal is charging/falling and is fully spent
+  on impact, including a miss. It improves the one impact, not sun count.
+- **Failure:** enemies leaving the fixed prediction wastes the entire stored Zenith.
+
+### Milestones
+
+- **R3:** Solitary Heavenly Judgment / 独日天刑 = smaller, slower, much stronger
+  center; Twin Luminary Eclipse / 双曜蚀界 = two staggered smaller predictions with
+  lower single-target damage; Swift Eclipse Calamity / 迅蚀劫光 = shorter telegraph
+  and faster Zenith, lower maximum power.
+- **R6:** Fixed-Noon Sun / 定午守阳 retains one-third Zenith but lowers its cap;
+  Dark-Sun Calamity / 晦日养劫 lengthens the telegraph while its shrinking center
+  gains power; Unsetting High Noon / 极昼不落 refuses to cast before full Zenith and
+  gains the largest, least frequent impact.
+- **R9:** Center-Forged Solar Soul / 正中炼阳 gives two omens for center hits and none
+  for outer hits; Myriad-Beings Calamity / 众生为劫 rewards hitting many distinct
+  enemies but is slow on bosses; Returning Afterglow / 残照归天 gives misses a dim
+  omen that weakens the final capstone.
+
+### Skill 2 — Nine Suns in One / 九阳归一
+
+At nine visible omens, the system predicts the highest threat and fixes a huge
+nine-layer seal. After a long warning, all omens collapse into one center-heavy
+impact, then omens and Zenith clear. No tracking, execution, or lingering fire.
+
+**Must not become:** Moonfall gravity, a generic meteor shower, ordinary fire DoT,
+or a player-aimed ground spell.
+
+---
+
+## Scarlet Wave Manual / 赤浪真诀
+
+**Identity:** automatic left/right paired crescents whose real spatial intersection
+creates a third moving seam.
+
+### Core
+
+- **Scarlet Twin Tides / 赤月双潮:** casts a left crescent and preserves its trail,
+  then a mirrored right crescent. Actual overlap creates a moving molten seam. Target
+  movement or widely separated cast locations can make the pair fail.
+- **Yin-Yang Confluence / 阴阳合流:** a three-state pair (waiting left, waiting right,
+  successful Confluence), not a hit meter. Ordinary hits and repeated targets add
+  nothing.
+- **Failure:** the first trail expires or the two wave surfaces never intersect.
+
+### Milestones
+
+- **R3:** Scarlet Lance Tide / 赤练穿潮 = narrow fast pierce, tiny overlap allowance;
+  River-Crossing Flame Moon / 横江炎月 = broad slow coverage, weaker direct damage;
+  Rolling Twin Tides / 连潮催浪 = faster pairs with shorter, weaker waves.
+- **R6:** After-Tide Awaits Moon / 余潮候月 preserves the first trail but weakens it;
+  Misbanked Flying Arc / 错岸飞虹 can bridge separated groups with a weaker diagonal
+  seam; Ruptured Burning Current / 焚流决口 replaces the persistent seam with one
+  immediate line detonation and deletes both waves.
+- **R9:** Long Sunset Trace / 落霞长痕 makes slower, longer-lived seams but weakens
+  crescents; Horizon Opposing Tides / 天际对潮 starts larger waves farther away for a
+  stronger but riskier arena divide; Reversing Scarlet Tide / 赤浪倒卷 sends weakened
+  crescents back outward after Confluence and lowers seam damage.
+
+### Skill 2 — Sunset Divide / 落日分潮
+
+After three successful Confluences, two giant walls enter from opposite arena sides
+toward the last successful seam. They push ordinary enemies and detonate the entire
+meeting line, then clear the Confluence record. No pull, mark, execution, or fire field.
+
+**Must not become:** Jinfeng player trails, Black Tide's world cycle, Blazing's fan,
+or generic repeated fire waves.
+
+---
+
+## Moonfall Tide Ritual / 月坠潮仪
+
+**Identity:** a gravity moon dragged indirectly by player movement, real enemy orbit,
+stored angular motion, then a collapse/release/suspension payoff.
+
+### Core
+
+- **Suspended Moon Tide / 悬月引潮:** spawns at a dense group and follows the player
+  with lag. Nearby enemies orbit rather than snap to center. Slow dragging gathers
+  enemies; fast dragging loses them. It automatically resolves after a fixed duration.
+- **Abyssal Syzygy / 深渊合朔:** equals actual angular motion completed by current
+  orbiters. Hits and time alone add nothing; escaping enemies lose unfinished motion.
+- **Failure:** dragging too quickly or leaving targets behind collapses an empty moon.
+
+### Milestones
+
+- **R3:** Sea-Suppressing Heavy Moon / 沉月镇海 = nearly fixed, small, strong pull and
+  collapse; Twin-Moon Crossing / 双月交潮 = two weaker moons with transferable orbits;
+  Swift-Moon Vessel / 疾月行舟 = fast wide collection, weak pull and collapse.
+- **R6:** Still-Sea Syzygy / 静海留朔 retains half escaped motion but lowers the cap;
+  Myriad Currents to Moon / 万流朝月 rewards many distinct orbiters and is weak on one
+  boss; Mountain-Weight Eclipse / 重岳蚀心 rewards elite/boss mass and discounts mobs.
+- **R9:** Returning-Abyss Moon / 归墟沉月 crushes all orbiters inward with slower orbit
+  growth; Flying-Star Release / 飞星离潮 launches enemies tangentially for collision
+  damage and has no center hit; Grand-Yin Suspension / 太阴悬界 freezes targets in
+  orbit with lower damage and no displacement.
+
+### Skill 2 — Moonless Eclipse / 无月蚀界
+
+After three high-Syzygy resolutions, a giant moon suspends nearby enemies and records
+their velocity. The moon follows the player slowly during the pause; resolution bends
+all stored vectors toward its center, with faster enemies traveling farther/hitting
+harder. It then clears the record.
+
+**Must not become:** Nine-Sun prediction, Black Tide's arena-wide phase, a fixed
+delayed blast, or an ordinary suction field.
+
+---
+
+## Heaven-Sundering Edict / 断天敕令
+
+**Identity:** an automatic physical line drawn from player position, then a delayed
+spell judgment on the exact same world-space line.
+
+### Core
+
+- **Sundering Stroke / 断天一笔:** the system selects the best line through threats,
+  performs a partial-damage physical stroke, fixes it in world space, then repeats it
+  as the main-damage spell judgment. Targets hit by both receive complete judgment.
+- **Judgment Mandate / 裁决天命:** only same-target double hits write Mandate. Each cast
+  records line quality from target count/strength and length; the best line is retained
+  for Skill 2. Mandate does not buff ordinary attacks.
+- **Failure:** enemies hit initially leave the fixed line before judgment.
+
+### Milestones
+
+- **R3:** One-Line Mountain Sundering / 一线断岳 = longer, narrower, stronger double
+  hit and weak partial hits; Crossed Golden Edict / 十字金章 = two short weak lines and
+  one intersection judgment; Swift Short Edict / 疾书短令 = shorter delay/line and
+  lower Mandate.
+- **R6:** Lenient Record / 宽赦留章 grants partial Mandate from one-stage hits but
+  lowers the capstone ceiling; Aggravated Judgment / 重罪加刑 heavily weights elites
+  and bosses and discounts mobs; Collective Sentence / 连坐成狱 doubles reward for
+  three-plus double-hit targets and is weak on one target.
+- **R9:** Lone Heaven Scar / 天痕独断 stores only the best, narrowest, strongest line;
+  Twin Edicts / 双敕并书 stores the latest two weaker lines and adds an intersection;
+  Heaven-Moving Amendment / 移天改诏 stores orientation/length and translates the
+  line to the current dense group at lower damage without rotating it.
+
+### Skill 2 — Supreme Sundering Decree / 无上断天令
+
+At full Mandate, recorded lines extend to arena boundaries. A giant sword performs
+the physical stroke, then the spell judgment repeats exactly. Complete double hits
+receive the payoff; Mandate and records clear. No explosion, tracking, or domain.
+
+**Must not become:** Nine-Sun ground prediction, Jinfeng travel lines, Yujian weapon
+paths, or Blazing's marked execution corridor.
+
+---
+
+## Verdant Ring Scripture / 碧环经
+
+**Identity:** automatic behavior-generated Root/Leaf/Thorn glyphs; the ordered last
+three glyphs algorithmically compose the next invocation.
+
+### Core
+
+- **Three-Life Ring Glyphs / 三生符环:** each timed sample generates Root when nearly
+  still, Leaf after enough movement, or Thorn after recent Evade (highest priority).
+  The UI shows the queue, next-generation rule, and invocation preview.
+- **Three-Ring Order / 三环道序:** glyph 1 chooses shape (Root circle, Leaf route,
+  Thorn triangle around the highest threat); glyph 2 chooses motion (fixed, traveling,
+  contracting); glyph 3 chooses payoff (bind/guard, repeat, high damage). The queue
+  clears after automatic invocation, producing 27 predictable combinations.
+- **Failure:** player behavior writes a valid but tactically inappropriate sequence.
+
+### Milestones
+
+- **R3:** Mountain-Root Scripture / 镇岳根书 makes Root easier/stronger and Leaf harder;
+  Green-Wind Leaf Scripture / 青风叶书 makes Leaf easier/faster and Root harder;
+  Calamity-Step Thorn Scripture / 劫步棘书 extends Thorn timing/damage but lengthens
+  Evade cooldown.
+- **R6:** Single-Line Specialization / 一脉专精 empowers three identical glyphs and
+  weakens mixed sequences; Three-Talents Concord / 三才合契 empowers three different
+  glyphs and weakens repeats; First-Last Generation / 首尾相生 weakly repeats A-B-A
+  patterns and shrinks other arrangements.
+- **R9:** Earth Scripture / 地书·万根 emphasizes Root control and weakens Thorn damage;
+  Heaven Scripture / 天书·千叶 adds weaker Leaf repeats/projectile clearing and reduces
+  Root guard; Thorn Scripture / 荆书·百劫 raises final Thorn damage while sacrificing
+  Root control and Leaf repeats.
+
+### Skill 2 — Sprout-Sun Invocation / 萌阳开界
+
+Retained until the exact Root→Leaf→Thorn sequence occurs. It automatically creates a
+three-phase world bloom at the player position: roots spread and temporarily fix the
+region, leaves sweep along them, then all paths erupt as one thorn sun and disappear.
+No infection, permanent field, manual selection, or following aura.
+
+**Must not become:** Burning Ring proximity orbit, Green Vine tethers, Thousand Root
+infection, generic aura damage, or a manually selected rune menu.
