@@ -5,6 +5,10 @@ import {
   type GongfaStageState
 } from "../data/gongfa";
 import {
+  createAuthoredGongfaRuntimeState,
+  type AuthoredGongfaRuntimeState
+} from "../data/authoredGongfaMechanics";
+import {
   getSurgeGongfaSpec,
   surgeGongfaIds,
   SURGE_BURST_IDS,
@@ -46,6 +50,8 @@ export interface GongfaRuntime {
   blazingFeather?: BlazingFeatherState;
   surge?: SurgeState;
   skill1Refinements?: Skill1RefinementState;
+  /** Canonical state shared by all 25 approved, independently authored mechanics. */
+  authored: AuthoredGongfaRuntimeState;
 }
 
 export interface Skill1RefinementState {
@@ -103,6 +109,14 @@ export interface GongfaProjectileHitFacts {
   embedStacks: number;
   embedPower: number;
   resourceGainEligible?: boolean;
+}
+
+export interface AuthoredTargetFact {
+  targetId: number;
+  x: number;
+  y: number;
+  healthRatio: number;
+  rank: "ordinary" | "elite" | "boss";
 }
 
 export interface YujianState {
@@ -181,6 +195,12 @@ export type GongfaRuntimeEvent =
       eligibleTargetCount?: number;
       hasMovementDirection?: boolean;
       isMoving?: boolean;
+      movementAngle?: number;
+      movementDistance?: number;
+      playerX?: number;
+      playerY?: number;
+      healthRatio?: number;
+      targets?: AuthoredTargetFact[];
       skill2Enabled?: boolean;
       skill2Id?: string;
       learnedMasteryIds?: string[];
@@ -214,7 +234,18 @@ export type GongfaRuntimeEvent =
       isMoving?: boolean;
     }
   | { kind: "incoming-damage"; amount: number; skill2Id?: string; learnedMasteryIds?: string[] }
-  | { kind: "crimson-detonation"; x: number; y: number; damage: number; fromEmbed: boolean };
+  | { kind: "crimson-detonation"; x: number; y: number; damage: number; fromEmbed: boolean }
+  | {
+      kind: "enemy-death";
+      targetId: number;
+      x: number;
+      y: number;
+      rank: "ordinary" | "elite" | "boss";
+      velocityX: number;
+      velocityY: number;
+      playerX: number;
+      playerY: number;
+    };
 
 export type GongfaRuntimeCommand =
   | {
@@ -445,6 +476,17 @@ export type GongfaRuntimeCommand =
       kind: "myriad-root-killing-field";
       trapCount: number; pulses: number; damage: number; radius: number; pulseDelayMs: number; lifetimeMs: number;
       masteryCast: MasterySkill2Cast;
+    }
+  | {
+      kind: "authored-line-strike";
+      style: "mist-wraith-crossing" | "grave-sword-rise";
+      origin: "player" | { x: number; y: number };
+      aimMode?: "nearest" | "strongest";
+      angle?: number;
+      damage: number;
+      width: number;
+      length: number;
+      sourceGongfaId: GongfaId;
     };
 
 export interface YujianTransformationTriggers {
@@ -930,6 +972,9 @@ export function projectGongfaCollectionCheckpoint(
 }
 
 function resetTransientRuntimeTimers(runtime: GongfaRuntime): void {
+  runtime.authored.continuousMovementMs = 0;
+  runtime.authored.continuousDistance = 0;
+  runtime.authored.lastMovementAngle = undefined;
   if (runtime.yujian) runtime.yujian.intentDurationRemaining = 0;
   if (runtime.jinfeng) runtime.jinfeng.walkingStormCooldownRemaining = 0;
   if (runtime.gengjin) {
@@ -1174,6 +1219,7 @@ interface CreateGongfaRuntimeInput {
   blazingFeather?: Partial<BlazingFeatherState>;
   surge?: Partial<SurgeState>;
   skill1Refinements?: Partial<Skill1RefinementState>;
+  authored?: Partial<AuthoredGongfaRuntimeState>;
 }
 
 export interface GongfaRuntimeCheckpointFields {
@@ -1423,6 +1469,7 @@ function restoreSkill1RefinementLedger(runtime: GongfaRuntime): Skill1Refinement
 }
 
 function copyRuntime(runtime: GongfaRuntime): GongfaRuntime {
+  const authored = runtime.authored ?? createAuthoredGongfaRuntimeState(runtime.gongfaId);
   return {
     ...runtime,
     combat: { ...runtime.combat },
@@ -1441,6 +1488,11 @@ function copyRuntime(runtime: GongfaRuntime): GongfaRuntime {
     crimsonFurnace: runtime.crimsonFurnace ? { ...runtime.crimsonFurnace } : undefined,
     blazingFeather: runtime.blazingFeather ? { ...runtime.blazingFeather } : undefined,
     surge: runtime.surge ? { ...runtime.surge } : undefined,
+    authored: {
+      ...authored,
+      targetLedger: { ...authored.targetLedger },
+      anchors: authored.anchors.map((anchor) => ({ ...anchor }))
+    },
     skill1Refinements: restoreSkill1RefinementLedger(runtime)
   };
 }
@@ -1532,6 +1584,7 @@ export function createGongfaRuntime(input: CreateGongfaRuntimeInput): GongfaRunt
     throw new Error(`Gongfa ${input.gongfaId} has no starting combat state.`);
   }
 
+  const authoredDefaults = createAuthoredGongfaRuntimeState(input.gongfaId);
   const runtime: GongfaRuntime = {
     gongfaId: input.gongfaId,
     attackCooldownRemaining: 0,
@@ -1609,6 +1662,16 @@ export function createGongfaRuntime(input: CreateGongfaRuntimeInput): GongfaRunt
     surge: surgeGongfaIdSet.has(input.gongfaId)
       ? { ...surgeDefaults, ...input.surge }
       : undefined,
+    authored: {
+      ...authoredDefaults,
+      ...input.authored,
+      mechanicId: authoredDefaults.mechanicId,
+      targetLedger: {
+        ...authoredDefaults.targetLedger,
+        ...input.authored?.targetLedger
+      },
+      anchors: (input.authored?.anchors ?? authoredDefaults.anchors).map((anchor) => ({ ...anchor }))
+    },
     skill1Refinements: {
       ...emptySkill1Refinements(),
       ...input.skill1Refinements
@@ -1949,6 +2012,129 @@ export function getGongfaRuntimeTickThreatRadius(runtime: GongfaRuntime): number
   return 0;
 }
 
+function distanceSquared(ax: number, ay: number, bx: number, by: number): number {
+  const dx = ax - bx;
+  const dy = ay - by;
+  return dx * dx + dy * dy;
+}
+
+function advanceAuthoredWorldFacts(
+  runtime: GongfaRuntime,
+  event: GongfaRuntimeEvent,
+  commands: GongfaRuntimeCommand[]
+): void {
+  const state = runtime.authored;
+
+  if (event.kind === "enemy-death") {
+    if (runtime.gongfaId === "mist-wraith-canon") {
+      const value = event.rank === "boss" ? 3 : event.rank === "elite" ? 2 : 1;
+      const remainingMs = event.rank === "boss" ? 20_000 : event.rank === "elite" ? 12_000 : 6_000;
+      state.anchors.push({
+        kind: "corpse-soul",
+        x: event.x,
+        y: event.y,
+        value,
+        remainingMs,
+        targetId: event.targetId
+      });
+      state.anchors = state.anchors.slice(-12);
+    }
+
+    if (runtime.gongfaId === "sword-burial-formation") {
+      const velocityMagnitude = Math.hypot(event.velocityX, event.velocityY);
+      const angle = velocityMagnitude > 1
+        ? Math.atan2(event.velocityY, event.velocityX)
+        : Math.atan2(event.y - event.playerY, event.x - event.playerX);
+      state.anchors.push({
+        kind: "grave-sword",
+        x: event.x,
+        y: event.y,
+        value: 1,
+        angle,
+        originPlayerX: event.playerX,
+        originPlayerY: event.playerY,
+        targetId: event.targetId
+      });
+      state.anchors = state.anchors.filter((anchor) => anchor.kind === "grave-sword").slice(-state.maxCharges);
+      state.charges = state.anchors.length;
+    }
+    return;
+  }
+
+  if (event.kind !== "tick") return;
+
+  state.phaseElapsedMs += event.deltaMs;
+  if (event.isMoving) {
+    state.continuousMovementMs += event.deltaMs;
+    state.continuousDistance += Math.max(0, event.movementDistance ?? 0);
+    state.lastMovementAngle = event.movementAngle ?? state.lastMovementAngle;
+  } else {
+    state.continuousMovementMs = 0;
+    state.continuousDistance = 0;
+    state.lastMovementAngle = undefined;
+  }
+
+  state.anchors = state.anchors.filter((anchor) => {
+    if (anchor.remainingMs === undefined) return true;
+    anchor.remainingMs -= event.deltaMs;
+    return anchor.remainingMs > 0;
+  });
+
+  if (runtime.gongfaId === "mist-wraith-canon") {
+    const playerX = event.playerX ?? 0;
+    const playerY = event.playerY ?? 0;
+    let storedCount = state.anchors.filter((anchor) => anchor.kind === "stored-soul").length;
+    for (const anchor of state.anchors) {
+      if (
+        anchor.kind === "corpse-soul" &&
+        storedCount < state.maxCharges &&
+        distanceSquared(anchor.x, anchor.y, playerX, playerY) <= 68 * 68
+      ) {
+        anchor.kind = "stored-soul";
+        anchor.remainingMs = anchor.value === 3 ? 20_000 : anchor.value === 2 ? 14_000 : 9_000;
+        storedCount += 1;
+      }
+      if (anchor.kind === "stored-soul") {
+        anchor.x = playerX;
+        anchor.y = playerY;
+      }
+    }
+    state.charges = storedCount;
+    state.resource = storedCount / Math.max(1, state.maxCharges);
+  }
+
+  if (runtime.gongfaId === "sword-burial-formation") {
+    const targets = event.targets ?? [];
+    const retained = [] as typeof state.anchors;
+    for (const anchor of state.anchors) {
+      if (anchor.kind !== "grave-sword") {
+        retained.push(anchor);
+        continue;
+      }
+      const trespasser = targets.find(
+        (target) => distanceSquared(anchor.x, anchor.y, target.x, target.y) <= 46 * 46
+      );
+      if (!trespasser) {
+        retained.push(anchor);
+        continue;
+      }
+      commands.push({
+        kind: "authored-line-strike",
+        style: "grave-sword-rise",
+        origin: { x: anchor.x, y: anchor.y },
+        angle: anchor.angle ?? 0,
+        damage: runtime.combat.damage,
+        width: Math.max(18, runtime.combat.auraRadius * 0.42),
+        length: Math.max(260, runtime.combat.range),
+        sourceGongfaId: runtime.gongfaId
+      });
+    }
+    state.anchors = retained;
+    state.charges = retained.filter((anchor) => anchor.kind === "grave-sword").length;
+    state.resource = state.charges / Math.max(1, state.maxCharges);
+  }
+}
+
 export function advanceGongfaRuntime(
   runtime: GongfaRuntime,
   inputEvent: GongfaRuntimeEvent
@@ -1977,6 +2163,10 @@ export function advanceGongfaRuntime(
 
   let next = copyRuntime(runtime);
   const commands: GongfaRuntimeCommand[] = [];
+  advanceAuthoredWorldFacts(next, event, commands);
+  if (event.kind === "enemy-death") {
+    return { runtime: next, commands };
+  }
 
   if (
     event.kind === "tick" &&
@@ -2764,6 +2954,36 @@ export function planGongfaAttack(
   options = {
     learnedMasteryIds: options.learnedMasteryIds ?? runtime.mastery.masteryLearnedIds
   };
+  if (runtime.gongfaId === "mist-wraith-canon") {
+    const soulIndex = runtime.authored.anchors.findIndex((anchor) => anchor.kind === "stored-soul");
+    const soul = soulIndex >= 0 ? runtime.authored.anchors.splice(soulIndex, 1)[0] : undefined;
+    runtime.authored.charges = runtime.authored.anchors.filter(
+      (anchor) => anchor.kind === "stored-soul"
+    ).length;
+    runtime.authored.resource = runtime.authored.charges / Math.max(1, runtime.authored.maxCharges);
+    return [{
+      kind: "authored-line-strike",
+      style: "mist-wraith-crossing",
+      origin: "player",
+      aimMode: soul?.value === 3 ? "strongest" : "nearest",
+      damage: Math.max(1, Math.floor(runtime.combat.damage * (soul ? soul.value : 0.28))),
+      width: soul ? 14 + soul.value * 7 : 8,
+      length: Math.max(240, runtime.combat.range + (soul?.value ?? 0) * 55),
+      sourceGongfaId: runtime.gongfaId
+    }];
+  }
+  if (runtime.gongfaId === "sword-burial-formation") {
+    return [{
+      kind: "authored-line-strike",
+      style: "grave-sword-rise",
+      origin: "player",
+      aimMode: "nearest",
+      damage: Math.max(1, Math.floor(runtime.combat.damage * 0.3)),
+      width: 7,
+      length: Math.max(220, runtime.combat.range * 0.82),
+      sourceGongfaId: runtime.gongfaId
+    }];
+  }
   const archetypeBonus = surgeBonusCount(runtime, options.learnedMasteryIds ?? []);
   if (runtime.combat.pattern === "ritual") {
     return [{

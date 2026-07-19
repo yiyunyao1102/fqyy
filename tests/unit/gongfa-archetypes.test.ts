@@ -6,17 +6,18 @@ import { getRank10Skill2Id } from "../../src/logic/mastery";
 import { getGongfaPackage } from "../../src/data/gongfaPackages";
 import { getSurgeGongfaSpec } from "../../src/data/surgeGongfa";
 import { getGongfaVisualIdentity } from "../../src/visual/gongfaVisualIdentity";
+import { authoredGongfaMechanics } from "../../src/data/authoredGongfaMechanics";
 
 const archetypes = [
   ["nine-sun-calamity-seal", "ritual-impact", "heavenly-sun-descent", "heavenly-sun-descent"],
-  ["mist-wraith-canon", "summon-wraiths", "hundred-ghost-procession", "hundred-ghost-procession"],
+  ["mist-wraith-canon", "authored-line-strike", "hundred-ghost-procession", "hundred-ghost-procession"],
   ["heavenfall-body-art", "melee-combination", "star-breaking-descent", "star-breaking-descent"],
   ["thousand-root-formation", "root-trap-array", "myriad-root-killing-field", "myriad-root-killing-field"],
   ["flame-demon-body-art", "melee-combination", "asura-conflagration", "star-breaking-descent"],
   ["vermilion-bird-covenant", "summon-wraiths", "vermilion-host-descent", "hundred-ghost-procession"],
   ["frozen-river-formation", "root-trap-array", "frozen-river-prison", "myriad-root-killing-field"],
   ["moonfall-tide-ritual", "ritual-impact", "moonfall-cataclysm", "heavenly-sun-descent"],
-  ["sword-burial-formation", "root-trap-array", "ten-thousand-sword-tomb", "myriad-root-killing-field"],
+  ["sword-burial-formation", "authored-line-strike", "ten-thousand-sword-tomb", "myriad-root-killing-field"],
   ["heaven-sundering-edict", "ritual-impact", "supreme-sundering-decree", "heavenly-sun-descent"],
   ["myriad-beast-grove", "summon-wraiths", "myriad-beast-stampede", "hundred-ghost-procession"],
   ["ancient-tree-body-art", "melee-combination", "world-tree-incarnation", "star-breaking-descent"]
@@ -81,8 +82,8 @@ describe("expanded Gongfa archetypes", () => {
     }
   });
 
-  it("keeps peak single-target output in one risk-reward band across the new archetypes", () => {
-    const outputs = archetypes.map(([gongfaId]) => {
+  it("keeps template output in one band and routes event-driven methods through authored budgets", () => {
+    const outputs = archetypes.flatMap(([gongfaId]) => {
       const runtime = createGongfaRuntime({ gongfaId });
       runtime.combat = { ...runtime.combat, ...gongfaConfigs[gongfaId].stages.yuanying! };
       const command = planGongfaAttack(runtime, 0)[0]!;
@@ -97,7 +98,12 @@ describe("expanded Gongfa archetypes", () => {
         return command.damage * ((command.strikeCount - 1) * 0.55 + command.finisherScale) / cadence;
       }
       if (command.kind === "root-trap-array") {
-        return command.damage * command.count * command.pulses / cadence;
+        return [command.damage * command.count * command.pulses / cadence];
+      }
+      if (command.kind === "authored-line-strike") {
+        expect(authoredGongfaMechanics[gongfaId].balance.damage).toBeGreaterThanOrEqual(0.8);
+        expect(authoredGongfaMechanics[gongfaId].balance.damage).toBeLessThanOrEqual(1.2);
+        return [];
       }
       throw new Error(`Unexpected archetype command: ${command.kind}`);
     });
